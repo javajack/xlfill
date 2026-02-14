@@ -19,4 +19,4 @@ require (
 	golang.org/x/text v0.30.0 // indirect
 )
 
-replace github.com/javajack/xlfill => ../xlfill
+replace github.com/javajack/xlfill => ../
