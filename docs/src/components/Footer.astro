@@ -1,0 +1,87 @@
+---
+import EditLink from 'virtual:starlight/components/EditLink';
+import LastUpdated from 'virtual:starlight/components/LastUpdated';
+import Pagination from 'virtual:starlight/components/Pagination';
+---
+
+<footer class="sl-flex">
+	<div class="meta sl-flex">
+		<EditLink />
+		<LastUpdated />
+	</div>
+	<Pagination />
+
+	<div class="author-footer">
+		<p>
+			Built by <strong>Rakesh Waghela</strong> &mdash; Go engineer, available for consulting and contract work.
+		</p>
+		<nav class="author-links">
+			<a href="https://x.com/webiyo" target="_blank" rel="noopener noreferrer">X / Twitter</a>
+			<span class="sep">&middot;</span>
+			<a href="https://www.linkedin.com/in/rakeshwaghela" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+			<span class="sep">&middot;</span>
+			<a href="https://topmate.io/rakeshwaghela" target="_blank" rel="noopener noreferrer">Book a Consultation</a>
+			<span class="sep">&middot;</span>
+			<a href="https://github.com/javajack/xlfill" target="_blank" rel="noopener noreferrer">GitHub</a>
+		</nav>
+	</div>
+</footer>
+
+<style>
+	@layer starlight.core {
+		footer {
+			flex-direction: column;
+			gap: 1.5rem;
+		}
+		.meta {
+			gap: 0.75rem 3rem;
+			justify-content: space-between;
+			flex-wrap: wrap;
+			margin-top: 3rem;
+			font-size: var(--sl-text-sm);
+			color: var(--sl-color-gray-3);
+		}
+		.meta > :global(p:only-child) {
+			margin-inline-start: auto;
+		}
+	}
+
+	.author-footer {
+		margin-top: 1.5rem;
+		padding-top: 1.5rem;
+		border-top: 1px solid var(--sl-color-gray-5);
+		text-align: center;
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-3);
+	}
+
+	.author-footer p {
+		margin: 0 0 0.5rem 0;
+	}
+
+	.author-footer strong {
+		color: var(--sl-color-white);
+	}
+
+	.author-links {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+	}
+
+	.author-links a {
+		color: var(--sl-color-gray-2);
+		text-decoration: none;
+	}
+
+	.author-links a:hover {
+		color: var(--sl-color-white);
+		text-decoration: underline;
+	}
+
+	.sep {
+		color: var(--sl-color-gray-4);
+	}
+</style>

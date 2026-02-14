@@ -1,0 +1,59 @@
+---
+title: "jx:grid"
+description: Fill a dynamic grid with headers and data rows.
+---
+
+import { Image } from 'astro:assets';
+import gridTemplate from '../../../assets/images/grid-1.png';
+import gridOutput from '../../../assets/images/grid-2.png';
+
+`jx:grid` fills a rectangular area with header values across columns and data rows downward. Perfect for pivot-style reports, dynamic-column tables, or any report where the columns aren't known at template design time.
+
+## Syntax
+
+```
+jx:grid(headers="headerList" data="dataRows" lastCell="A1")
+```
+
+## Attributes
+
+| Attribute | Description | Required |
+|-----------|-------------|----------|
+| `headers` | Expression for header values (1D slice) | Yes |
+| `data` | Expression for data rows (2D slice) | Yes |
+| `lastCell` | Bottom-right cell of the grid area | Yes |
+
+## Example
+
+**Template:**
+
+<Image src={gridTemplate} alt="Template with jx:grid command for dynamic grid generation" />
+
+**Output:**
+
+<Image src={gridOutput} alt="Output showing a filled grid with headers across and data down" />
+
+Go code:
+
+```go
+data := map[string]any{
+    "headers": []string{"Q1", "Q2", "Q3", "Q4"},
+    "dataRows": [][]any{
+        {100, 200, 150, 180},
+        {90, 110, 130, 160},
+    },
+}
+```
+
+Headers expand to the right. Data rows expand downward. The template cell's formatting is applied to every generated cell.
+
+## When to use grid vs. each
+
+- Use **`jx:each`** when your columns are fixed and known at template design time (the common case)
+- Use **`jx:grid`** when the number of columns is dynamic — the data determines how many columns appear
+
+## Next command
+
+Need to insert images into your report?
+
+**[jx:image &rarr;](/commands/image/)**

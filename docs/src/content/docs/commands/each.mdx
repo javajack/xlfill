@@ -1,0 +1,208 @@
+---
+title: "jx:each"
+description: Loop over a collection, repeating a template area for each item.
+---
+
+import { Image } from 'astro:assets';
+import template1 from '../../../assets/images/each-1.png';
+import output1 from '../../../assets/images/each-2.png';
+import rightTemplate from '../../../assets/images/each-right-1.png';
+import rightOutput from '../../../assets/images/each-right-2.png';
+import varindexTemplate from '../../../assets/images/each-varindex-1.png';
+import varindexOutput from '../../../assets/images/each-varindex-2.png';
+import orderbyTemplate from '../../../assets/images/each-orderby-1.png';
+import orderbyOutput from '../../../assets/images/each-orderby-2.png';
+import selectTemplate from '../../../assets/images/each-select-1.png';
+import selectOutput from '../../../assets/images/each-select-2.png';
+import groupbyTemplate from '../../../assets/images/each-groupby-asc-1.png';
+import groupbyOutput from '../../../assets/images/each-groupby-asc-2.png';
+import multisheetTemplate from '../../../assets/images/each-multisheet-1.png';
+import multisheetOutput from '../../../assets/images/each-multisheet-2.png';
+import multisheetOutput2 from '../../../assets/images/each-multisheet-3.png';
+
+`jx:each` is the workhorse command. It loops over a collection and repeats its template area for each item — like a `for` loop, but in your spreadsheet.
+
+## Syntax
+
+```
+jx:each(items="employees" var="e" lastCell="C1")
+```
+
+## Attributes
+
+| Attribute | Description | Default | Required |
+|-----------|-------------|---------|----------|
+| `items` | Expression for the collection to iterate | — | Yes |
+| `var` | Loop variable name | — | Yes |
+| `lastCell` | Bottom-right cell of the repeating area | — | Yes |
+| `varIndex` | Variable name for the 0-based index | — | No |
+| `direction` | `DOWN` or `RIGHT` | `DOWN` | No |
+| `select` | Filter expression (must return bool) | — | No |
+| `orderBy` | Sort spec: `"e.Name ASC, e.Age DESC"` | — | No |
+| `groupBy` | Property to group by | — | No |
+| `groupOrder` | Group sort: `ASC` or `DESC` | `ASC` | No |
+| `multisheet` | Variable with sheet names (one sheet per item) | — | No |
+
+## Basic loop
+
+The simplest and most common use case — repeat a row for each item:
+
+**Template:**
+
+<Image src={template1} alt="Template with a header row and a data row containing ${e.name}, ${e.age}, ${e.payment}" />
+
+**Output:**
+
+<Image src={output1} alt="Output with 5 employee rows, formatting preserved from template" />
+
+The comment on the top-left cell:
+```
+jx:area(lastCell="C2")
+jx:each(items="employees" var="e" lastCell="C2")
+```
+
+Each employee produces one row. The header stays, the data row repeats, all formatting carries over.
+
+## Iteration index
+
+Need a row number? Use `varIndex`:
+
+```
+jx:each(items="employees" var="e" varIndex="i" lastCell="D1")
+```
+
+**Template:**
+
+<Image src={varindexTemplate} alt="Template with ${i} column for the iteration index" />
+
+**Output:**
+
+<Image src={varindexOutput} alt="Output showing 0-based index in the first column" />
+
+The index `i` is 0-based (0, 1, 2, ...).
+
+## Expand RIGHT instead of DOWN
+
+By default, rows expand downward. Set `direction="RIGHT"` to expand across columns instead:
+
+```
+jx:each(items="months" var="m" direction="RIGHT" lastCell="A2")
+```
+
+**Template:**
+
+<Image src={rightTemplate} alt="Template configured for RIGHT direction expansion" />
+
+**Output:**
+
+<Image src={rightOutput} alt="Output showing data expanded horizontally across columns" />
+
+Great for time series, calendar layouts, or cross-tab reports.
+
+## Filtering with select
+
+Only include items that match a condition:
+
+```
+jx:each(items="employees" var="e" select="e.payment > 2000" lastCell="C1")
+```
+
+**Template:**
+
+<Image src={selectTemplate} alt="Template with a select filter expression" />
+
+**Output:**
+
+<Image src={selectOutput} alt="Output showing only filtered employees" />
+
+The `select` expression must return a boolean. Only items where it evaluates to `true` appear in the output.
+
+## Sorting with orderBy
+
+Sort items before looping:
+
+```
+jx:each(items="employees" var="e" orderBy="e.name ASC" lastCell="C1")
+```
+
+**Template:**
+
+<Image src={orderbyTemplate} alt="Template with orderBy attribute for sorting" />
+
+**Output:**
+
+<Image src={orderbyOutput} alt="Output with employees sorted alphabetically by name" />
+
+Multiple sort keys:
+
+```
+jx:each(items="employees" var="e" orderBy="e.department ASC, e.name DESC" lastCell="C1")
+```
+
+## Grouping with groupBy
+
+Group items by a property. Each group becomes a `GroupData` object with `Item` (the key) and `Items` (the group members):
+
+```
+jx:each(items="employees" var="g" groupBy="department" groupOrder="ASC" lastCell="C5")
+```
+
+**Template:**
+
+<Image src={groupbyTemplate} alt="Template configured for groupBy with nested employee iteration" />
+
+**Output:**
+
+<Image src={groupbyOutput} alt="Output showing employees grouped by department with headers" />
+
+Inside the loop, `g.Item` is the group key (e.g., `"Engineering"`) and `g.Items` is the slice of items in that group. Nest another `jx:each` inside to iterate over `g.Items`.
+
+## Multisheet mode
+
+Generate **one worksheet per item** using `multisheet`:
+
+```
+jx:each(items="departments" var="dept" multisheet="sheetNames" lastCell="C5")
+```
+
+**Template (single sheet serves as the template for all):**
+
+<Image src={multisheetTemplate} alt="Template sheet that will be copied for each item in multisheet mode" />
+
+**Output (one sheet per department):**
+
+<Image src={multisheetOutput} alt="First output sheet for one department" />
+
+<Image src={multisheetOutput2} alt="Second output sheet for another department" />
+
+The `sheetNames` variable must be a `[]string` in your data:
+
+```go
+data := map[string]any{
+    "departments": departments,
+    "sheetNames":  []string{"Engineering", "Marketing", "Sales"},
+}
+```
+
+The template sheet is copied for each item, then removed.
+
+## Nested loops
+
+Place an inner `jx:each` inside an outer one. The inner command's area must be strictly within the outer:
+
+```
+Cell A1 comment:
+  jx:area(lastCell="C5")
+  jx:each(items="departments" var="dept" lastCell="C5")
+
+Cell A2 comment:
+  jx:each(items="dept.Employees" var="e" lastCell="C2")
+```
+
+This creates a department header followed by employee rows for each department. XLFill detects the nesting automatically from the cell positions.
+
+## Next command
+
+Sometimes you need to conditionally show or hide part of a template:
+
+**[jx:if &rarr;](/commands/if/)**

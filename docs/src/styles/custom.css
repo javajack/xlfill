@@ -1,0 +1,11 @@
+/* Reduce hero section whitespace on the splash page */
+.hero {
+	padding-block: 1.5rem !important;
+	padding-bottom: 0.5rem !important;
+}
+
+@media (min-width: 50rem) {
+	.hero {
+		padding-block: clamp(1.5rem, calc(0.5rem + 3vmin), 3rem) !important;
+	}
+}

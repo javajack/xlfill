@@ -1,0 +1,94 @@
+---
+title: Formulas
+description: How XLFill automatically expands and parameterizes Excel formulas in your templates.
+---
+
+import { Image } from 'astro:assets';
+import formulaTemplate from '../../../assets/images/formulas_template.png';
+import formulaOutput from '../../../assets/images/formulas_output.png';
+import paramFormulaImg from '../../../assets/images/par.png';
+import groupsumTemplate from '../../../assets/images/groupsum-1.png';
+import groupsumOutput from '../../../assets/images/groupsum-2.png';
+
+One of the most powerful features of the template-first approach: **formulas just work.** You write them in your template like normal Excel formulas, and XLFill automatically updates cell references when rows or columns are inserted.
+
+## Automatic formula expansion
+
+When a `jx:each` command inserts new rows, any formula that references cells in the expanded area is automatically updated.
+
+**Template:**
+
+<Image src={formulaTemplate} alt="Template with SUM formula referencing a single data row" />
+
+**Output:**
+
+<Image src={formulaOutput} alt="Output where the SUM formula has been expanded to cover all generated rows" />
+
+A formula like `=SUM(B2:B2)` in the template expands to `=SUM(B2:B6)` when 5 data rows are generated. You don't write any code for this — it happens automatically.
+
+### Why this matters
+
+With hard-coded Excel libraries, you'd have to:
+1. Count how many rows were inserted
+2. Manually construct the formula string: `fmt.Sprintf("=SUM(B2:B%d)", lastRow)`
+3. Write it to the cell
+4. Hope you got the reference right
+
+With XLFill, you write the formula once in the template and forget about it.
+
+## Formulas with grouped data
+
+Formulas work beautifully with grouped data. Here's a report with subtotals per group:
+
+**Template:**
+
+<Image src={groupsumTemplate} alt="Template with group headers, detail rows, and SUM formulas for subtotals" />
+
+**Output:**
+
+<Image src={groupsumOutput} alt="Output showing groups with correct subtotal formulas expanded for each group" />
+
+Each group's SUM formula correctly references only the rows in that group.
+
+## Parameterized formulas
+
+Sometimes you need dynamic values inside formulas — a tax rate, a discount percentage, a bonus amount. Use `${...}` expressions inside formula cells:
+
+<Image src={paramFormulaImg} alt="Template showing parameterized formulas with ${taxRate} inside an Excel formula" />
+
+```
+=A1*${taxRate}        → =A1*0.2
+=A1*${rate}+${bonus}  → =A1*0.1+500
+```
+
+The `${...}` parts are resolved from your data context, and the result is a real Excel formula (not a static value). This means Excel will recalculate it when the file is opened.
+
+```go
+data := map[string]any{
+    "employees": employees,
+    "taxRate":   0.2,
+    "bonus":     500,
+}
+```
+
+## Recalculate on open
+
+By default, Excel caches formula results. If you want Excel to recalculate everything when the file is opened (ensuring fresh values), enable this option:
+
+```go
+xlfill.Fill("template.xlsx", "output.xlsx", data,
+    xlfill.WithRecalculateOnOpen(true),
+)
+```
+
+This sets a flag in the file that tells Excel: *"recalculate all formulas when you open this."*
+
+## What's next?
+
+If you need to extend XLFill with your own template commands:
+
+**[Custom Commands &rarr;](/guides/custom-commands/)**
+
+Or if you want to hook into cell processing for conditional styling:
+
+**[Area Listeners &rarr;](/guides/area-listeners/)**

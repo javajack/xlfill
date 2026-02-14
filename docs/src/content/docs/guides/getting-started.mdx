@@ -1,0 +1,195 @@
+---
+title: Getting Started
+description: Install XLFill and build your first template-driven Excel report in 5 minutes.
+---
+
+import { Image } from 'astro:assets';
+import blankTemplate from '../../../assets/images/each-1-blank.png';
+import filledOutput from '../../../assets/images/each-2.png';
+
+This guide takes you from zero to a working Excel report in about 5 minutes.
+
+## Install
+
+```bash
+go get github.com/javajack/xlfill
+```
+
+Requires Go 1.24+. Only `.xlsx` files are supported.
+
+## Step 1: Create your template
+
+Open Excel, Google Sheets, or LibreOffice Calc. Create a new file and set it up like this:
+
+<Image src={blankTemplate} alt="A blank Excel template with expression placeholders in cells and a jx:each command in a cell comment" />
+
+Here's what to do:
+
+1. **Format the header row** — bold text, background color, borders, whatever you like
+2. **In the data row**, put expressions: `${e.Name}` in A2, `${e.Age}` in B2, `${e.Payment}` in C2
+3. **Right-click cell A1** and add a cell comment with this text:
+   ```
+   jx:area(lastCell="C2")
+   jx:each(items="employees" var="e" lastCell="C2")
+   ```
+4. Save as `template.xlsx`
+
+That comment tells XLFill: *"The template region is A1:C2. Repeat row 2 for each item in the `employees` list, using `e` as the loop variable."*
+
+:::tip
+The header row (row 1) is part of the area but **above** the `jx:each` row, so it appears once. Only the `jx:each` row (row 2) repeats.
+:::
+
+### How to add cell comments in your spreadsheet editor
+
+Cell comments are the mechanism XLFill uses to read commands. Here's how to add them in the most popular tools:
+
+#### Microsoft Excel
+
+1. Right-click the cell (e.g., A1)
+2. Select **Insert Comment** (or **New Note** in Excel 365)
+3. Type your commands, one per line:
+   ```
+   jx:area(lastCell="C2")
+   jx:each(items="employees" var="e" lastCell="C2")
+   ```
+4. Click outside the comment to close it
+
+:::note
+Excel 365 has two features: **Comments** (threaded, collaborative) and **Notes** (classic yellow sticky notes). XLFill reads **Notes**. If you only see "New Comment" (threaded), go to **Review > Notes > New Note** instead.
+:::
+
+#### Google Sheets
+
+1. Right-click the cell
+2. Select **Insert note** (not "Insert comment" — that creates a threaded discussion)
+3. Type your commands and click outside to save
+4. **Important**: When done, download as **Microsoft Excel (.xlsx)** via File > Download. XLFill only reads `.xlsx` files.
+
+:::caution
+Google Sheets distinguishes between **Notes** (plain text, stored in the cell) and **Comments** (threaded discussions). XLFill reads **Notes**. Use **Insert > Note**, not **Insert > Comment**.
+:::
+
+#### LibreOffice Calc
+
+1. Right-click the cell
+2. Select **Insert Comment**
+3. Type your commands in the yellow comment box
+4. Click outside to close
+5. Save as `.xlsx` format (File > Save As > select "Microsoft Excel 2007-365 (.xlsx)")
+
+#### WPS Office Spreadsheet
+
+1. Right-click the cell
+2. Select **Insert Comment**
+3. Type your commands in the comment box
+4. Click outside to close
+5. Ensure you save as `.xlsx` format
+
+#### Quick verification
+
+After adding comments, you should see a small **red triangle** in the top-right corner of the cell (in most editors). Hover over the cell to verify your comment text is correct. That's all XLFill needs to find your commands.
+
+## Step 2: Write Go code
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/javajack/xlfill"
+)
+
+func main() {
+    data := map[string]any{
+        "employees": []map[string]any{
+            {"Name": "Elsa",  "Age": 28, "Payment": 1500},
+            {"Name": "Oleg",  "Age": 32, "Payment": 2300},
+            {"Name": "Neil",  "Age": 34, "Payment": 2500},
+            {"Name": "Maria", "Age": 25, "Payment": 1700},
+            {"Name": "John",  "Age": 35, "Payment": 2800},
+        },
+    }
+
+    err := xlfill.Fill("template.xlsx", "output.xlsx", data)
+    if err != nil {
+        fmt.Println("Error:", err)
+        return
+    }
+    fmt.Println("Done! Open output.xlsx")
+}
+```
+
+## Step 3: Run it
+
+```bash
+go run main.go
+```
+
+Open `output.xlsx`:
+
+<Image src={filledOutput} alt="The filled output Excel file with 5 employee rows, all formatting preserved from the template" />
+
+Five rows of data, all formatting preserved from the template. The header stayed put, the borders carried over, the number formats are intact. No code for any of that.
+
+## Using Go structs
+
+Maps work, but so do structs — use whatever fits your application:
+
+```go
+type Employee struct {
+    Name    string
+    Age     int
+    Payment float64
+}
+
+data := map[string]any{
+    "employees": []Employee{
+        {Name: "Elsa", Age: 28, Payment: 1500},
+        {Name: "Oleg", Age: 32, Payment: 2300},
+    },
+}
+
+xlfill.Fill("template.xlsx", "output.xlsx", data)
+```
+
+Field names in expressions (`${e.Name}`) match struct field names.
+
+## Serving from an HTTP handler
+
+For web applications, use `FillReader` or `FillBytes`:
+
+```go
+func reportHandler(w http.ResponseWriter, r *http.Request) {
+    data := fetchReportData()
+
+    w.Header().Set("Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    w.Header().Set("Content-Disposition",
+        "attachment; filename=report.xlsx")
+
+    tmpl, _ := os.Open("template.xlsx")
+    defer tmpl.Close()
+
+    xlfill.FillReader(tmpl, w, data)
+}
+```
+
+No temp files. The report streams directly to the HTTP response.
+
+## What just happened?
+
+Let's recap the workflow:
+
+1. You designed a template **visually in Excel** — formatting, fonts, borders, all done in a spreadsheet editor
+2. You added **two things** to the template: `${...}` expressions in cells and a `jx:` command in a cell comment
+3. Your Go code provided data and called **one function**
+4. XLFill read the template, found the commands, looped over your data, evaluated the expressions, and wrote the output — **preserving every visual detail**
+
+The template is the design. The code is just data. That's the whole philosophy.
+
+## Next: understand how templates work
+
+Now that you've seen it in action, let's look deeper at how templates are structured — what the `jx:area` command does, how nesting works, and how XLFill processes your template.
+
+**[How Templates Work &rarr;](/guides/how-templates-work/)**

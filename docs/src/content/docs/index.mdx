@@ -1,0 +1,92 @@
+---
+title: XLFill
+description: Template-first Excel report generation for Go. Design in Excel, fill with Go.
+template: splash
+hero:
+  tagline: You already know how to make a great-looking spreadsheet. Now let your Go app fill it with data — without writing a single line of styling code.
+  actions:
+    - text: See why it's better
+      link: /guides/why-xlfill/
+      icon: right-arrow
+    - text: Get started in 5 minutes
+      link: /guides/getting-started/
+      icon: right-arrow
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Image } from 'astro:assets';
+import templateImg from '../../assets/images/each-1.png';
+import outputImg from '../../assets/images/each-2.png';
+
+## The idea? Beautifully simple.
+
+You know that feeling when you open Excel and just *make* a report look right? The fonts, the colors, the borders — it takes a few minutes and it looks professional. Now imagine your Go application could just... fill that in with live data. That's XLFill.
+
+**Here's a template you'd design:**
+
+<Image src={templateImg} alt="An Excel template with expressions like ${e.name} and a jx:each command in a cell comment" />
+
+**And here's what XLFill produces:**
+
+<Image src={outputImg} alt="The filled Excel output with real employee data, all formatting preserved" />
+
+Same fonts. Same colors. Same borders. You didn't write a single line of code for any of that styling. The template *is* the design.
+
+---
+
+## Four steps. That's the whole workflow.
+
+<CardGrid>
+	<Card title="1. Design in Excel" icon="pencil">
+		Open any spreadsheet editor — Excel, Google Sheets, LibreOffice, whatever you prefer. Make your report look exactly right. Headers, colors, borders, number formats, logos. Save as `.xlsx`.
+	</Card>
+	<Card title="2. Drop in a few annotations" icon="add-document">
+		Put `${employee.Name}` in cells where data should go. Add a `jx:each(...)` command in a cell comment to define a loop. That's it — two things to learn.
+	</Card>
+	<Card title="3. Fill from Go" icon="rocket">
+		One function call: `xlfill.Fill("template.xlsx", "output.xlsx", data)`. Your data flows into the template. Every pixel of formatting — preserved.
+	</Card>
+	<Card title="4. Ship it" icon="approve-check">
+		Your users get a real `.xlsx` file. Opens in Excel, Google Sheets, LibreOffice. Not a CSV. Not an HTML table someone has to squint at. A proper, beautiful spreadsheet.
+	</Card>
+</CardGrid>
+
+---
+
+## The old way vs. XLFill
+
+If you've ever built Excel reports in Go (or any language, really), this table will feel painfully familiar:
+
+| | The old way (cell-by-cell code) | With XLFill (template-first) |
+|---|---|---|
+| **How you design** | Line by line in Go code | Visually in Excel — like a normal person |
+| **Changing the layout** | Edit code, rebuild, redeploy, pray | Edit the `.xlsx` file. Done. |
+| **Who can update it?** | Only developers | Anyone who knows Excel |
+| **Styling & formatting** | 20 lines of verbose struct literals per style | It's already in the template |
+| **Formulas** | Build formula strings by hand | Write them in Excel — XLFill expands them |
+| **Merged cells** | Code the exact ranges | Just merge them in Excel |
+| **Conditional formatting** | Most libraries don't even support it | It's in the template — just works |
+| **Code complexity** | Grows with every column, every section | Stays tiny — your code only provides data |
+| **When something breaks** | Good luck debugging `fmt.Sprintf("A%d", row+2)` | Open the template. Look at it. |
+
+---
+
+## Think about it this way
+
+> *"I used to spend 200 lines of Go code wrestling with cell styles, merging headers, and adjusting column widths. Then one day our finance team redesigned the whole report. I had to rewrite everything. Now? My business analyst designs the template in Excel, and my Go code is 10 lines. When they want changes, they just update the template. I don't even hear about it."*
+
+That's the shift. The template becomes the single source of truth for how the report looks. Your code becomes the single source of truth for the data. Nobody steps on each other's toes.
+
+---
+
+## Curious? Two ways to dive in.
+
+<CardGrid>
+	<Card title="See the full case" icon="open-book">
+		Read [Why XLFill?](/guides/why-xlfill/) — a detailed breakdown with real Go code showing 40+ lines of hard-coded pain reduced to 3 lines.
+	</Card>
+	<Card title="Just try it" icon="rocket">
+		[Get started](/guides/getting-started/) — install, build a template, fill it with data. Five minutes, start to finish.
+	</Card>
+</CardGrid>
