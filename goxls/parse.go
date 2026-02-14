@@ -18,9 +18,8 @@ type ParsedCommand struct {
 	CellRef  CellRef           // cell containing this comment
 }
 
-// attrPattern matches key="value" pairs, supporting various quote styles.
-// Supports: "value", 'value', and Unicode smart quotes from LibreOffice.
-var attrPattern = regexp.MustCompile(`(\w+)\s*=\s*["'\x{201C}\x{201D}\x{2018}\x{2019}]([^"'\x{201C}\x{201D}\x{2018}\x{2019}]*)["'\x{201C}\x{201D}\x{2018}\x{2019}]`)
+// attrKeyPattern matches the key= part of an attribute to find the start of each attribute.
+var attrKeyPattern = regexp.MustCompile(`(\w+)\s*=\s*`)
 
 // areasPattern matches the areas=[...] attribute.
 var areasPattern = regexp.MustCompile(`areas\s*=\s*\[([^\]]*)\]`)
@@ -154,14 +153,63 @@ func parseCommandLine(line string, cellRef CellRef) (ParsedCommand, error) {
 	}, nil
 }
 
+// isQuote checks if a rune is a recognized quote character.
+func isQuote(r rune) bool {
+	return r == '"' || r == '\'' || r == '\u201C' || r == '\u201D' || r == '\u2018' || r == '\u2019'
+}
+
+// matchingCloseQuote returns the closing quote for a given opening quote.
+func matchingCloseQuote(open rune) rune {
+	switch open {
+	case '"':
+		return '"'
+	case '\'':
+		return '\''
+	case '\u201C': // left double smart quote
+		return '\u201D'
+	case '\u2018': // left single smart quote
+		return '\u2019'
+	default:
+		return open
+	}
+}
+
 // parseAttributes extracts key="value" pairs from an attribute string.
+// Values are delimited by matching quotes: the closing quote must be the same type
+// as the opening quote. This allows single quotes inside double-quoted values
+// (e.g., select="e.city == 'Geldern'").
 func parseAttributes(attrStr string) map[string]string {
 	attrs := make(map[string]string)
-	matches := attrPattern.FindAllStringSubmatch(attrStr, -1)
-	for _, m := range matches {
-		if len(m) >= 3 {
-			attrs[m[1]] = m[2]
+	runes := []rune(attrStr)
+	i := 0
+	for i < len(runes) {
+		// Find key=
+		loc := attrKeyPattern.FindStringIndex(string(runes[i:]))
+		if loc == nil {
+			break
 		}
+		m := attrKeyPattern.FindStringSubmatch(string(runes[i:]))
+		key := m[1]
+		i += loc[1] // advance past "key="
+
+		// Expect an opening quote
+		if i >= len(runes) || !isQuote(runes[i]) {
+			continue
+		}
+		openQuote := runes[i]
+		closeQuote := matchingCloseQuote(openQuote)
+		i++ // skip opening quote
+
+		// Read until matching close quote
+		start := i
+		for i < len(runes) && runes[i] != closeQuote {
+			i++
+		}
+		value := string(runes[start:i])
+		if i < len(runes) {
+			i++ // skip closing quote
+		}
+		attrs[key] = value
 	}
 	return attrs
 }
