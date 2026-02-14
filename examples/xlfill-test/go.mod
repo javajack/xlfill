@@ -1,4 +1,4 @@
-module examples
+module xlfill-test
 
 go 1.24.1
 
@@ -19,4 +19,4 @@ require (
 	golang.org/x/text v0.30.0 // indirect
 )
 
-replace github.com/javajack/xlfill => ../
+replace github.com/javajack/xlfill => ../../

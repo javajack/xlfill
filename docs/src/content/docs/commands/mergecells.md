@@ -40,6 +40,10 @@ Cell A1 value: `${dept.Name}`
 
 For each department, the department name cell spans columns A through C, creating a clean section header.
 
+## Try it
+
+Download the runnable example: **template** [t11.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t11.xlsx) | **output** [11_mergecells.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/11_mergecells.xlsx) | [code snippet](/xlfill/reference/examples/#11-merge-cells)
+
 ## Next command
 
 Need to set a summary or total cell?

@@ -41,6 +41,10 @@ Regular `${...}` expressions work for most cases. `jx:updateCell` is useful when
 - The cell is outside a loop and you want to set it from a specific context variable
 - You need the update to happen after other commands have run (it respects command ordering)
 
+## Try it
+
+Browse all 19 runnable examples with input templates and filled outputs on the [Examples](/xlfill/reference/examples/) page.
+
 ## Next command
 
 Auto-fit row heights for cells with wrapped text:

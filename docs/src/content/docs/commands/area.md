@@ -45,6 +45,10 @@ This says: *"The template region is A1:D5. Within that region, loop over `employ
 - The area defines what gets **processed**, not what gets output — a `jx:each` inside may expand beyond the original area boundaries
 - If your template has a header row above the repeating row, include the header in the area so it appears in the output
 
+## Try it
+
+Every example in the test suite uses `jx:area`. Browse all 19 runnable examples with input templates and filled outputs on the [Examples](/xlfill/reference/examples/) page.
+
 ## Next command
 
 The command you'll pair with `jx:area` on almost every template:

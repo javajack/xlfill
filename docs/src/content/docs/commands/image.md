@@ -64,6 +64,10 @@ Cell A1 also has:
 
 Each employee gets their photo in column A, with name/details in columns B-D.
 
+## Try it
+
+Download the runnable example: **template** [t10.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t10.xlsx) | **output** [10_image.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/10_image.xlsx) | [code snippet](/xlfill/reference/examples/#10-embed-image)
+
 ## Next command
 
 Need to merge cells for section headers?

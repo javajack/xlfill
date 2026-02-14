@@ -49,6 +49,10 @@ Each row gets its height adjusted based on its content.
 
 That's every command in XLFill. You now know the full template language. For most reports, you'll use `jx:area` + `jx:each` and occasionally `jx:if`. The rest are there when you need them.
 
+## Try it
+
+Download the runnable example: **template** [t17.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t17.xlsx) | **output** [17_autorowheight.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/17_autorowheight.xlsx) | [code snippet](/xlfill/reference/examples/#17-auto-row-height)
+
 ## What's next?
 
 Learn how formulas in your templates are automatically expanded when rows are inserted:

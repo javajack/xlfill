@@ -201,6 +201,23 @@ Cell A2 comment:
 
 This creates a department header followed by employee rows for each department. XLFill detects the nesting automatically from the cell positions.
 
+## Try it
+
+Download the runnable examples from [`examples/xlfill-test`](https://github.com/javajack/xlfill/tree/main/examples/xlfill-test):
+
+| Feature | Template | Output |
+|---------|----------|--------|
+| Basic loop | [t01.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t01.xlsx) | [01_basic_each.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/01_basic_each.xlsx) |
+| Loop index (`varIndex`) | [t02.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t02.xlsx) | [02_varindex.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/02_varindex.xlsx) |
+| Expand RIGHT | [t03.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t03.xlsx) | [03_direction_right.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/03_direction_right.xlsx) |
+| Filter (`select`) | [t04.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t04.xlsx) | [04_select.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/04_select.xlsx) |
+| Sort (`orderBy`) | [t05.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t05.xlsx) | [05_orderby.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/05_orderby.xlsx) |
+| Group (`groupBy`) | [t06.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t06.xlsx) | [06_groupby.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/06_groupby.xlsx) |
+| Nested loops | [t13.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t13.xlsx) | [13_nested_each.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/13_nested_each.xlsx) |
+| Multi-sheet | [t14.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t14.xlsx) | [14_multisheet.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/14_multisheet.xlsx) |
+
+See the [full code snippets](/xlfill/reference/examples/) for each example.
+
 ## Next command
 
 Sometimes you need to conditionally show or hide part of a template:
