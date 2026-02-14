@@ -291,6 +291,21 @@ Formulas can contain `${...}` expressions that are resolved from context data be
 =A1*${rate}+${bonus}  → =A1*0.1+500
 ```
 
+## Performance
+
+Benchmarked on Intel i5-9300H @ 2.40GHz:
+
+| Scenario | Rows | Time | Memory | Throughput |
+|----------|------|------|--------|------------|
+| Simple template | 100 | 6.2ms | 2.0 MB | ~16,000 rows/sec |
+| Simple template | 1,000 | 35ms | 9.6 MB | ~28,500 rows/sec |
+| Simple template | 10,000 | 308ms | 86.8 MB | ~32,500 rows/sec |
+| Nested loops (10×20) | 200 | 2.6ms | 920 KB | ~77,000 rows/sec |
+| Expression eval | 1 | 199ns | 48 B | ~5M evals/sec |
+| Comment parse | 1 | 4.1μs | 1 KB | ~244K parses/sec |
+
+Scaling is linear. Memory usage is ~8.7 KB/row at scale.
+
 ## Requirements
 
 - Go 1.24+
