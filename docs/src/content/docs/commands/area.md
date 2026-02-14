@@ -49,4 +49,4 @@ This says: *"The template region is A1:D5. Within that region, loop over `employ
 
 The command you'll pair with `jx:area` on almost every template:
 
-**[jx:each &rarr;](/commands/each/)**
+**[jx:each &rarr;](/xlfill/commands/each/)**

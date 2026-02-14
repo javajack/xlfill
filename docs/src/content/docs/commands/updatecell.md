@@ -45,4 +45,4 @@ Regular `${...}` expressions work for most cases. `jx:updateCell` is useful when
 
 Auto-fit row heights for cells with wrapped text:
 
-**[jx:autoRowHeight &rarr;](/commands/autorowheight/)**
+**[jx:autoRowHeight &rarr;](/xlfill/commands/autorowheight/)**

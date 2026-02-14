@@ -3,7 +3,7 @@ title: API Reference
 description: Complete API reference for the XLFill Go library — functions, options, and types.
 ---
 
-This page covers every public function, option, and type in XLFill. For guided walkthroughs, see the [Getting Started](/guides/getting-started/) guide.
+This page covers every public function, option, and type in the XLFill library. For guided walkthroughs, see the [Getting Started](/xlfill/guides/getting-started/) guide.
 
 ## Top-level functions
 
@@ -93,8 +93,8 @@ All options work with both the top-level functions and `NewFiller`.
 
 | Option | Description |
 |--------|-------------|
-| `WithCommand(name, factory)` | Register a [custom command](/guides/custom-commands/) |
-| `WithAreaListener(listener)` | Add a [cell transform hook](/guides/area-listeners/) |
+| `WithCommand(name, factory)` | Register a [custom command](/xlfill/guides/custom-commands/) |
+| `WithAreaListener(listener)` | Add a [cell transform hook](/xlfill/guides/area-listeners/) |
 | `WithPreWrite(fn)` | Callback before writing output |
 
 ## Types
@@ -136,7 +136,7 @@ type Size struct {
 
 ### Command interface
 
-Implement this to create [custom commands](/guides/custom-commands/):
+Implement this to create [custom commands](/xlfill/guides/custom-commands/):
 
 ```go
 type Command interface {
@@ -148,7 +148,7 @@ type Command interface {
 
 ### AreaListener interface
 
-Implement this for [cell transform hooks](/guides/area-listeners/):
+Implement this for [cell transform hooks](/xlfill/guides/area-listeners/):
 
 ```go
 type AreaListener interface {
@@ -175,4 +175,4 @@ Nested access works via dot notation: `${employee.Address.City}`.
 
 Curious about how XLFill performs at scale?
 
-**[Performance &rarr;](/reference/performance/)**
+**[Performance &rarr;](/xlfill/reference/performance/)**

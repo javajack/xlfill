@@ -100,4 +100,4 @@ xlfill.WithClearTemplateCells(false)
 
 For the complete list of functions, options, and types:
 
-**[API Reference &rarr;](/reference/api/)**
+**[API Reference &rarr;](/xlfill/reference/api/)**

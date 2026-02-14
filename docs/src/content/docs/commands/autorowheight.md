@@ -53,4 +53,4 @@ That's every command in XLFill. You now know the full template language. For mos
 
 Learn how formulas in your templates are automatically expanded when rows are inserted:
 
-**[Formulas &rarr;](/guides/formulas/)**
+**[Formulas &rarr;](/xlfill/guides/formulas/)**

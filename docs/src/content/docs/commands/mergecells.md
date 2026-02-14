@@ -44,4 +44,4 @@ For each department, the department name cell spans columns A through C, creatin
 
 Need to set a summary or total cell?
 
-**[jx:updateCell &rarr;](/commands/updatecell/)**
+**[jx:updateCell &rarr;](/xlfill/commands/updatecell/)**

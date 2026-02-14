@@ -39,19 +39,19 @@ Here's every command available, in order of how often you'll use them:
 
 | Command | What it does | Page |
 |---------|-------------|------|
-| **[jx:area](/commands/area/)** | Defines the template working region. Required on every template. | [Details &rarr;](/commands/area/) |
-| **[jx:each](/commands/each/)** | Loops over a collection, repeating rows or columns for each item. The workhorse command. | [Details &rarr;](/commands/each/) |
-| **[jx:if](/commands/if/)** | Conditionally shows or hides a template area. | [Details &rarr;](/commands/if/) |
+| **[jx:area](/xlfill/commands/area/)** | Defines the template working region. Required on every template. | [Details &rarr;](/xlfill/commands/area/) |
+| **[jx:each](/xlfill/commands/each/)** | Loops over a collection, repeating rows or columns for each item. The workhorse command. | [Details &rarr;](/xlfill/commands/each/) |
+| **[jx:if](/xlfill/commands/if/)** | Conditionally shows or hides a template area. | [Details &rarr;](/xlfill/commands/if/) |
 
 ### Specialized (use when you need them)
 
 | Command | What it does | Page |
 |---------|-------------|------|
-| **[jx:grid](/commands/grid/)** | Fills a dynamic grid with headers and data rows. Great for pivot-style reports. | [Details &rarr;](/commands/grid/) |
-| **[jx:image](/commands/image/)** | Inserts an image from byte data. Photos, logos, charts. | [Details &rarr;](/commands/image/) |
-| **[jx:mergeCells](/commands/mergecells/)** | Merges cells in a range. Useful for section headers in loops. | [Details &rarr;](/commands/mergecells/) |
-| **[jx:updateCell](/commands/updatecell/)** | Sets a single cell's value from an expression. For totals and summaries. | [Details &rarr;](/commands/updatecell/) |
-| **[jx:autoRowHeight](/commands/autorowheight/)** | Auto-fits row height after content is written. For cells with wrapped text. | [Details &rarr;](/commands/autorowheight/) |
+| **[jx:grid](/xlfill/commands/grid/)** | Fills a dynamic grid with headers and data rows. Great for pivot-style reports. | [Details &rarr;](/xlfill/commands/grid/) |
+| **[jx:image](/xlfill/commands/image/)** | Inserts an image from byte data. Photos, logos, charts. | [Details &rarr;](/xlfill/commands/image/) |
+| **[jx:mergeCells](/xlfill/commands/mergecells/)** | Merges cells in a range. Useful for section headers in loops. | [Details &rarr;](/xlfill/commands/mergecells/) |
+| **[jx:updateCell](/xlfill/commands/updatecell/)** | Sets a single cell's value from an expression. For totals and summaries. | [Details &rarr;](/xlfill/commands/updatecell/) |
+| **[jx:autoRowHeight](/xlfill/commands/autorowheight/)** | Auto-fits row height after content is written. For cells with wrapped text. | [Details &rarr;](/xlfill/commands/autorowheight/) |
 
 ## A typical template uses 2-3 commands
 
@@ -61,8 +61,8 @@ Don't be overwhelmed by the list. Most real-world templates use just `jx:area` +
 
 Start with the most important command — the one you'll use on every template:
 
-**[jx:area &rarr;](/commands/area/)**
+**[jx:area &rarr;](/xlfill/commands/area/)**
 
 Or jump straight to the loop command that does most of the heavy lifting:
 
-**[jx:each &rarr;](/commands/each/)**
+**[jx:each &rarr;](/xlfill/commands/each/)**

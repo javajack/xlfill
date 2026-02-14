@@ -1,6 +1,6 @@
 ---
 title: Why XLFill?
-description: See why template-first Excel generation is fundamentally better than hard-coding spreadsheets.
+description: See why a template-first Go library is fundamentally better than hard-coding spreadsheets cell by cell.
 ---
 
 import { Image } from 'astro:assets';
@@ -84,7 +84,7 @@ The fundamental problem? **The layout is trapped inside your code.** And code is
 
 ## What if the spreadsheet editor *was* your design tool?
 
-That's the core insight behind XLFill. You don't describe how a report looks in code. You design it where it belongs — in a spreadsheet editor.
+That's the core insight behind XLFill. It's a Go library that flips the approach: you don't describe how a report looks in code. You design it where it belongs — in a spreadsheet editor — and the library fills it with your data.
 
 ### Step 1: Make it look right in Excel
 
@@ -155,7 +155,7 @@ The template is the single source of truth for design. Your code is the single s
 
 ## Built on battle-tested foundations
 
-XLFill is a Go port of [JXLS 3.0](https://jxls.sourceforge.net/), the Java Excel template engine that's been used in enterprise applications for over a decade. Banks, insurance companies, government agencies — JXLS has powered their reports for years. Same proven template syntax, same powerful command set, reimplemented in clean, idiomatic Go.
+XLFill is a Go library — a port of [JXLS 3.0](https://jxls.sourceforge.net/), the Java Excel template engine that's been used in enterprise applications for over a decade. Banks, insurance companies, government agencies — JXLS has powered their reports for years. Same proven template syntax, same powerful command set, reimplemented as a clean, idiomatic Go module you `go get` into your project.
 
 ---
 
@@ -163,4 +163,4 @@ XLFill is a Go port of [JXLS 3.0](https://jxls.sourceforge.net/), the Java Excel
 
 It takes about five minutes to go from zero to a working report. No complicated setup. No boilerplate. Just a template and a few lines of Go.
 
-**[Let's get started &rarr;](/guides/getting-started/)**
+**[Let's get started &rarr;](/xlfill/guides/getting-started/)**

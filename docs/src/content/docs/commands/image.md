@@ -68,4 +68,4 @@ Each employee gets their photo in column A, with name/details in columns B-D.
 
 Need to merge cells for section headers?
 
-**[jx:mergeCells &rarr;](/commands/mergecells/)**
+**[jx:mergeCells &rarr;](/xlfill/commands/mergecells/)**

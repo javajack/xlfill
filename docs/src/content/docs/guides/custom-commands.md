@@ -86,4 +86,4 @@ Template usage: `jx:repeat(count="3" lastCell="C1")`
 
 For hooking into cell processing without creating a full command:
 
-**[Area Listeners &rarr;](/guides/area-listeners/)**
+**[Area Listeners &rarr;](/xlfill/guides/area-listeners/)**

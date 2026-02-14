@@ -134,4 +134,4 @@ Expressions are compiled once and cached, so even templates with thousands of ro
 
 Expressions fill individual cells with values. But to control **structure** — loops, conditions, grids — you need commands. Let's see how they work.
 
-**[Commands Overview &rarr;](/guides/commands-overview/)**
+**[Commands Overview &rarr;](/xlfill/guides/commands-overview/)**

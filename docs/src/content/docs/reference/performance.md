@@ -53,4 +53,4 @@ For comparison, the time to open a 10,000-row Excel file in the Excel applicatio
 
 ---
 
-You've reached the end of the documentation. If you haven't already, start with the [Getting Started](/guides/getting-started/) guide to build your first template-driven report, or check out [Why XLFill?](/guides/why-xlfill/) to see the full case for the template-first approach.
+You've reached the end of the documentation. If you haven't already, start with the [Getting Started](/xlfill/guides/getting-started/) guide to build your first template-driven report, or check out [Why XLFill?](/xlfill/guides/why-xlfill/) to see the full case for the template-first approach.
