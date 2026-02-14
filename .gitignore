@@ -1,0 +1,17 @@
+# JXLS reference source (cloned repo, not our code)
+jxls/source/
+
+# Go build/test artifacts
+*.out
+cover.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Test artifacts
+goxls/testdata/
