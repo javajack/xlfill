@@ -18,31 +18,31 @@ Or just browse the files below. Open any **input** file in Excel or LibreOffice 
 
 | # | Feature | Command / API | Template | Output | Source |
 |---|---------|---------------|----------|--------|--------|
-| 01 | Basic loop | [`jx:each`](/xlfill/commands/each/) | [t01.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t01.xlsx) | [01_basic_each.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/01_basic_each.xlsx) | [code](#01-basic-loop) |
-| 02 | Loop index | [`jx:each` varIndex](/xlfill/commands/each/#iteration-index) | [t02.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t02.xlsx) | [02_varindex.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/02_varindex.xlsx) | [code](#02-loop-index) |
-| 03 | Expand RIGHT | [`jx:each` direction](/xlfill/commands/each/#expand-right) | [t03.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t03.xlsx) | [03_direction_right.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/03_direction_right.xlsx) | [code](#03-expand-right) |
-| 04 | Filter items | [`jx:each` select](/xlfill/commands/each/#filtering) | [t04.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t04.xlsx) | [04_select.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/04_select.xlsx) | [code](#04-filter-items) |
-| 05 | Sort items | [`jx:each` orderBy](/xlfill/commands/each/#sorting) | [t05.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t05.xlsx) | [05_orderby.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/05_orderby.xlsx) | [code](#05-sort-items) |
-| 06 | Group items | [`jx:each` groupBy](/xlfill/commands/each/#grouping) | [t06.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t06.xlsx) | [06_groupby.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/06_groupby.xlsx) | [code](#06-group-items) |
-| 07 | Conditional | [`jx:if`](/xlfill/commands/if/) | [t07.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t07.xlsx) | [07_if_command.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/07_if_command.xlsx) | [code](#07-conditional) |
-| 08 | Formulas | [Formula expansion](/xlfill/guides/formulas/) | [t08.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t08.xlsx) | [08_formulas.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/08_formulas.xlsx) | [code](#08-formulas) |
-| 09 | Dynamic grid | [`jx:grid`](/xlfill/commands/grid/) | [t09.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t09.xlsx) | [09_grid.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/09_grid.xlsx) | [code](#09-dynamic-grid) |
-| 10 | Embed image | [`jx:image`](/xlfill/commands/image/) | [t10.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t10.xlsx) | [10_image.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/10_image.xlsx) | [code](#10-embed-image) |
-| 11 | Merge cells | [`jx:mergeCells`](/xlfill/commands/mergecells/) | [t11.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t11.xlsx) | [11_mergecells.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/11_mergecells.xlsx) | [code](#11-merge-cells) |
-| 12 | Hyperlinks | [`hyperlink()` expression](/xlfill/guides/expressions/) | [t12.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t12.xlsx) | [12_hyperlinks.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/12_hyperlinks.xlsx) | [code](#12-hyperlinks) |
-| 13 | Nested loops | [Nested `jx:each`](/xlfill/commands/each/#nested-loops) | [t13.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t13.xlsx) | [13_nested_each.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/13_nested_each.xlsx) | [code](#13-nested-loops) |
-| 14 | Multi-sheet | [`jx:each` multisheet](/xlfill/commands/each/#multi-sheet-output) | [t14.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t14.xlsx) | [14_multisheet.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/14_multisheet.xlsx) | [code](#14-multi-sheet) |
-| 15 | Custom notation | [`WithExpressionNotation`](/xlfill/reference/api/) | [t15.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t15.xlsx) | [15_custom_notation.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/15_custom_notation.xlsx) | [code](#15-custom-notation) |
-| 16 | Keep template sheet | [`WithKeepTemplateSheet`](/xlfill/reference/api/) | [t16.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t16.xlsx) | [16_keep_template.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/16_keep_template.xlsx) | [code](#16-keep-template-sheet) |
-| 17 | Auto row height | [`jx:autoRowHeight`](/xlfill/commands/autorowheight/) | [t17.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t17.xlsx) | [17_autorowheight.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/17_autorowheight.xlsx) | [code](#17-auto-row-height) |
-| 18 | FillBytes API | [`xlfill.FillBytes`](/xlfill/reference/api/) | [t18.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t18.xlsx) | [18_fill_bytes.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/18_fill_bytes.xlsx) | [code](#18-fillbytes-api) |
-| 19 | FillReader API | [`xlfill.FillReader`](/xlfill/reference/api/) | [t19.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t19.xlsx) | [19_fill_reader.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/19_fill_reader.xlsx) | [code](#19-fillreader-api) |
+| 01 | Basic loop | [`jx:each`](/xlfill/commands/each/) | [t01.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t01.xlsx) | [01_basic_each.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/01_basic_each.xlsx) | [code](#01---basic-loop) |
+| 02 | Loop index | [`jx:each` varIndex](/xlfill/commands/each/#iteration-index) | [t02.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t02.xlsx) | [02_varindex.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/02_varindex.xlsx) | [code](#02---loop-index) |
+| 03 | Expand RIGHT | [`jx:each` direction](/xlfill/commands/each/#expand-right) | [t03.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t03.xlsx) | [03_direction_right.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/03_direction_right.xlsx) | [code](#03---expand-right) |
+| 04 | Filter items | [`jx:each` select](/xlfill/commands/each/#filtering) | [t04.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t04.xlsx) | [04_select.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/04_select.xlsx) | [code](#04---filter-items) |
+| 05 | Sort items | [`jx:each` orderBy](/xlfill/commands/each/#sorting) | [t05.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t05.xlsx) | [05_orderby.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/05_orderby.xlsx) | [code](#05---sort-items) |
+| 06 | Group items | [`jx:each` groupBy](/xlfill/commands/each/#grouping) | [t06.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t06.xlsx) | [06_groupby.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/06_groupby.xlsx) | [code](#06---group-items) |
+| 07 | Conditional | [`jx:if`](/xlfill/commands/if/) | [t07.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t07.xlsx) | [07_if_command.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/07_if_command.xlsx) | [code](#07---conditional) |
+| 08 | Formulas | [Formula expansion](/xlfill/guides/formulas/) | [t08.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t08.xlsx) | [08_formulas.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/08_formulas.xlsx) | [code](#08---formulas) |
+| 09 | Dynamic grid | [`jx:grid`](/xlfill/commands/grid/) | [t09.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t09.xlsx) | [09_grid.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/09_grid.xlsx) | [code](#09---dynamic-grid) |
+| 10 | Embed image | [`jx:image`](/xlfill/commands/image/) | [t10.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t10.xlsx) | [10_image.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/10_image.xlsx) | [code](#10---embed-image) |
+| 11 | Merge cells | [`jx:mergeCells`](/xlfill/commands/mergecells/) | [t11.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t11.xlsx) | [11_mergecells.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/11_mergecells.xlsx) | [code](#11---merge-cells) |
+| 12 | Hyperlinks | [`hyperlink()` expression](/xlfill/guides/expressions/) | [t12.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t12.xlsx) | [12_hyperlinks.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/12_hyperlinks.xlsx) | [code](#12---hyperlinks) |
+| 13 | Nested loops | [Nested `jx:each`](/xlfill/commands/each/#nested-loops) | [t13.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t13.xlsx) | [13_nested_each.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/13_nested_each.xlsx) | [code](#13---nested-loops) |
+| 14 | Multi-sheet | [`jx:each` multisheet](/xlfill/commands/each/#multi-sheet-output) | [t14.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t14.xlsx) | [14_multisheet.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/14_multisheet.xlsx) | [code](#14---multi-sheet) |
+| 15 | Custom notation | [`WithExpressionNotation`](/xlfill/reference/api/) | [t15.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t15.xlsx) | [15_custom_notation.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/15_custom_notation.xlsx) | [code](#15---custom-notation) |
+| 16 | Keep template sheet | [`WithKeepTemplateSheet`](/xlfill/reference/api/) | [t16.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t16.xlsx) | [16_keep_template.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/16_keep_template.xlsx) | [code](#16---keep-template-sheet) |
+| 17 | Auto row height | [`jx:autoRowHeight`](/xlfill/commands/autorowheight/) | [t17.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t17.xlsx) | [17_autorowheight.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/17_autorowheight.xlsx) | [code](#17---auto-row-height) |
+| 18 | FillBytes API | [`xlfill.FillBytes`](/xlfill/reference/api/) | [t18.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t18.xlsx) | [18_fill_bytes.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/18_fill_bytes.xlsx) | [code](#18---fillbytes-api) |
+| 19 | FillReader API | [`xlfill.FillReader`](/xlfill/reference/api/) | [t19.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t19.xlsx) | [19_fill_reader.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/19_fill_reader.xlsx) | [code](#19---fillreader-api) |
 
 ---
 
 ## Code snippets
 
-### 01 — Basic loop
+### 01 - Basic loop
 
 Template cells: `A1:"Name"` `B1:"Age"` `C1:"Salary"` `A2:"${e.Name}"` `B2:"${e.Age}"` `C2:"${e.Salary}"`
 
@@ -62,7 +62,7 @@ data := map[string]any{
 xlfill.Fill("input/t01.xlsx", "output/01_basic_each.xlsx", data)
 ```
 
-### 02 — Loop index
+### 02 - Loop index
 
 Template cells: `A1:"#"` `B1:"Item"` `A2:"${idx + 1}"` `B2:"${e}"`
 
@@ -76,7 +76,7 @@ data := map[string]any{"items": []any{"Apple", "Banana", "Cherry"}}
 xlfill.Fill("input/t02.xlsx", "output/02_varindex.xlsx", data)
 ```
 
-### 03 — Expand RIGHT
+### 03 - Expand RIGHT
 
 Template cells: `A1:"${e}"`
 
@@ -91,7 +91,7 @@ data := map[string]any{"months": []any{"Jan", "Feb", "Mar", "Apr"}}
 xlfill.Fill("input/t03.xlsx", "output/03_direction_right.xlsx", data)
 ```
 
-### 04 — Filter items
+### 04 - Filter items
 
 Template cells: `A1:"Name"` `B1:"Salary"` `A2:"${e.Name}"` `B2:"${e.Salary}"`
 
@@ -112,7 +112,7 @@ data := map[string]any{
 xlfill.Fill("input/t04.xlsx", "output/04_select.xlsx", data)
 ```
 
-### 05 — Sort items
+### 05 - Sort items
 
 Template cells: `A1:"Name"` `A2:"${e.Name}"`
 
@@ -133,7 +133,7 @@ data := map[string]any{
 xlfill.Fill("input/t05.xlsx", "output/05_orderby.xlsx", data)
 ```
 
-### 06 — Group items
+### 06 - Group items
 
 Template cells: `A1:"${g.Item.Department}"` `B1:"${g.Item.Name}"`
 
@@ -155,7 +155,7 @@ data := map[string]any{
 xlfill.Fill("input/t06.xlsx", "output/06_groupby.xlsx", data)
 ```
 
-### 07 — Conditional
+### 07 - Conditional
 
 Template cells: `A1:"Name"` `B1:"Status"` `A2:"${e.Name}"` `B2:"ACTIVE"`
 
@@ -176,7 +176,7 @@ data := map[string]any{
 xlfill.Fill("input/t07.xlsx", "output/07_if_command.xlsx", data)
 ```
 
-### 08 — Formulas
+### 08 - Formulas
 
 Template cells: `A1:"Amount"` `A2:"${e.Amount}"` `A3: =SUM(A2:A2)`
 
@@ -197,7 +197,7 @@ data := map[string]any{
 xlfill.Fill("input/t08.xlsx", "output/08_formulas.xlsx", data)
 ```
 
-### 09 — Dynamic grid
+### 09 - Dynamic grid
 
 Template cells: `A1:"placeholder"`
 
@@ -218,7 +218,7 @@ data := map[string]any{
 xlfill.Fill("input/t09.xlsx", "output/09_grid.xlsx", data)
 ```
 
-### 10 — Embed image
+### 10 - Embed image
 
 Template cells: `A1:"Logo below"` `A2:""`
 
@@ -233,7 +233,7 @@ data := map[string]any{"logo": logoBytes}
 xlfill.Fill("input/t10.xlsx", "output/10_image.xlsx", data)
 ```
 
-### 11 — Merge cells
+### 11 - Merge cells
 
 Template cells: `A1:"Merged Header"`
 
@@ -248,7 +248,7 @@ data := map[string]any{}
 xlfill.Fill("input/t11.xlsx", "output/11_mergecells.xlsx", data)
 ```
 
-### 12 — Hyperlinks
+### 12 - Hyperlinks
 
 Template cells: `A1:"Site"` `B1:"Link"` `A2:"${e.Name}"` `B2:"${hyperlink(e.URL, e.Name)}"`
 
@@ -267,7 +267,7 @@ data := map[string]any{
 xlfill.Fill("input/t12.xlsx", "output/12_hyperlinks.xlsx", data)
 ```
 
-### 13 — Nested loops
+### 13 - Nested loops
 
 Template cells: `A1:"${dept.Name}"` `A2:"${e.Name}"` `B2:"${e.Role}"`
 
@@ -300,7 +300,7 @@ data := map[string]any{
 xlfill.Fill("input/t13.xlsx", "output/13_nested_each.xlsx", data)
 ```
 
-### 14 — Multi-sheet
+### 14 - Multi-sheet
 
 Template cells: `A1:"${dept.Name}"` `A2:"${dept.Head}"`
 
@@ -323,7 +323,7 @@ data := map[string]any{
 xlfill.Fill("input/t14.xlsx", "output/14_multisheet.xlsx", data)
 ```
 
-### 15 — Custom notation
+### 15 - Custom notation
 
 Template cells: `A1:"Name"` `A2:"{{e.Name}}"` (uses `{{ }}` instead of `${ }`)
 
@@ -344,7 +344,7 @@ xlfill.Fill("input/t15.xlsx", "output/15_custom_notation.xlsx", data,
 )
 ```
 
-### 16 — Keep template sheet
+### 16 - Keep template sheet
 
 ```go
 data := map[string]any{"items": []any{"X", "Y"}}
@@ -353,7 +353,7 @@ xlfill.Fill("input/t16.xlsx", "output/16_keep_template.xlsx", data,
 )
 ```
 
-### 17 — Auto row height
+### 17 - Auto row height
 
 Template cells: `A1:"${text}"`
 
@@ -370,7 +370,7 @@ data := map[string]any{
 xlfill.Fill("input/t17.xlsx", "output/17_autorowheight.xlsx", data)
 ```
 
-### 18 — FillBytes API
+### 18 - FillBytes API
 
 ```go
 data := map[string]any{"items": []any{"One", "Two", "Three"}}
@@ -378,7 +378,7 @@ outBytes, err := xlfill.FillBytes("input/t18.xlsx", data)
 os.WriteFile("output/18_fill_bytes.xlsx", outBytes, 0o644)
 ```
 
-### 19 — FillReader API
+### 19 - FillReader API
 
 ```go
 tmplBytes, _ := os.ReadFile("input/t19.xlsx")
