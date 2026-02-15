@@ -23,6 +23,9 @@ func NewFormulaProcessor() *StandardFormulaProcessor {
 // cellRefRegex matches cell references in formulas (e.g., A1, $A$1, Sheet1!A1, A1:B5).
 var cellRefRegex = regexp.MustCompile(`(?:('?[^'!]+?'?)!)?\$?([A-Z]{1,3})\$?(\d+)`)
 
+// rangeRefRegex matches range references in formulas like A1:B2 or Sheet1!A1:B2.
+var rangeRefRegex = regexp.MustCompile(`(?:('?[^'!]+?'?)!)?\$?([A-Z]{1,3})\$?(\d+):\$?([A-Z]{1,3})\$?(\d+)`)
+
 // ProcessAreaFormulas processes all formula cells in the area, updating references.
 func (fp *StandardFormulaProcessor) ProcessAreaFormulas(transformer Transformer, area *Area) {
 	formulaCells := transformer.GetFormulaCells()
@@ -255,10 +258,8 @@ func (fp *StandardFormulaProcessor) ProcessFormulasForRange(
 	defaultSheet string,
 ) string {
 	// Find range patterns like A1:B2
-	rangeRegex := regexp.MustCompile(`(?:('?[^'!]+?'?)!)?\$?([A-Z]{1,3})\$?(\d+):\$?([A-Z]{1,3})\$?(\d+)`)
-
-	return rangeRegex.ReplaceAllStringFunc(formula, func(match string) string {
-		parts := rangeRegex.FindStringSubmatch(match)
+	return rangeRefRegex.ReplaceAllStringFunc(formula, func(match string) string {
+		parts := rangeRefRegex.FindStringSubmatch(match)
 		if len(parts) < 6 {
 			return match
 		}

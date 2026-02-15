@@ -2,6 +2,7 @@ package xlfill
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -96,20 +97,24 @@ func (c CellRef) String() string {
 
 // CellName returns just the cell part like "A1" without sheet name.
 func (c CellRef) CellName() string {
-	return ColToName(c.Col) + fmt.Sprintf("%d", c.Row+1)
+	return ColToName(c.Col) + strconv.Itoa(c.Row+1)
 }
 
 // ColToName converts a 0-based column index to a column name.
 // 0→"A", 25→"Z", 26→"AA", 702→"AAA"
 func ColToName(col int) string {
-	result := ""
+	// Max Excel column is XFD (16383), which is 3 chars.
+	// Use a fixed-size buffer and build right-to-left.
+	var buf [3]byte
+	pos := len(buf)
 	col++ // convert to 1-based for algorithm
 	for col > 0 {
 		col-- // adjust for 0-indexed letter
-		result = string(rune('A'+col%26)) + result
+		pos--
+		buf[pos] = byte('A' + col%26)
 		col /= 26
 	}
-	return result
+	return string(buf[pos:])
 }
 
 // NameToCol converts a column name to a 0-based column index.

@@ -24,6 +24,7 @@ type Transformer interface {
 	GetSheetNames() []string
 	GetColumnWidth(sheet string, col int) float64
 	GetRowHeight(sheet string, row int) float64
+	SetRowHeight(sheet string, row int, height float64) error
 
 	// Sheet operations
 	DeleteSheet(name string) error

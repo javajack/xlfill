@@ -3,6 +3,7 @@ package xlfill
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -295,16 +296,9 @@ func (c *EachCommand) groupItems(items []any) []any {
 		ignoreCase := strings.Contains(strings.ToUpper(c.GroupOrder), "IGNORECASE") ||
 			strings.Contains(strings.ToUpper(c.GroupOrder), "IGNORE_CASE")
 
-		// Stable insertion sort
-		for i := 1; i < len(groups); i++ {
-			key := groups[i]
-			j := i - 1
-			for j >= 0 && compareGroupKeys(groups[j].key, key.key, orderDesc, ignoreCase) > 0 {
-				groups[j+1] = groups[j]
-				j--
-			}
-			groups[j+1] = key
-		}
+		sort.SliceStable(groups, func(i, j int) bool {
+			return compareGroupKeys(groups[i].key, groups[j].key, orderDesc, ignoreCase) < 0
+		})
 	}
 
 	// Convert to []any of GroupData
@@ -369,21 +363,14 @@ func parseOrderBy(spec string, varName string) []orderBySpec {
 	return specs
 }
 
-// sortByFields sorts items in place by the given field specs.
+// sortByFields sorts items in place by the given field specs using a stable O(n log n) sort.
 func sortByFields(items []any, specs []orderBySpec) {
 	if len(specs) == 0 || len(items) <= 1 {
 		return
 	}
-	// Simple insertion sort (stable) for template data sizes
-	for i := 1; i < len(items); i++ {
-		key := items[i]
-		j := i - 1
-		for j >= 0 && compareBySpecs(items[j], key, specs) > 0 {
-			items[j+1] = items[j]
-			j--
-		}
-		items[j+1] = key
-	}
+	sort.SliceStable(items, func(i, j int) bool {
+		return compareBySpecs(items[i], items[j], specs) < 0
+	})
 }
 
 // compareBySpecs compares two items by the orderBy specs.

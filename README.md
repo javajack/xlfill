@@ -297,14 +297,14 @@ Benchmarked on Intel i5-9300H @ 2.40GHz:
 
 | Scenario | Rows | Time | Memory | Throughput |
 |----------|------|------|--------|------------|
-| Simple template | 100 | 6.2ms | 2.0 MB | ~16,000 rows/sec |
-| Simple template | 1,000 | 35ms | 9.6 MB | ~28,500 rows/sec |
-| Simple template | 10,000 | 308ms | 86.8 MB | ~32,500 rows/sec |
-| Nested loops (10×20) | 200 | 2.6ms | 920 KB | ~77,000 rows/sec |
-| Expression eval | 1 | 199ns | 48 B | ~5M evals/sec |
-| Comment parse | 1 | 4.1μs | 1 KB | ~244K parses/sec |
+| Simple template | 100 | 5.3ms | 1.8 MB | ~19,000 rows/sec |
+| Simple template | 1,000 | 30ms | 9.4 MB | ~33,000 rows/sec |
+| Simple template | 10,000 | 279ms | 85.6 MB | ~35,800 rows/sec |
+| Nested loops (10×20) | 200 | 2.2ms | 872 KB | ~91,000 rows/sec |
+| Expression eval | 1 | 192ns | 48 B | ~5.2M evals/sec |
+| Comment parse | 1 | 4.0μs | 1 KB | ~250K parses/sec |
 
-Scaling is linear. Memory usage is ~8.7 KB/row at scale.
+Scaling is linear. Memory usage is ~8.6 KB/row at scale.
 
 ## Requirements
 

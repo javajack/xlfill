@@ -2,18 +2,23 @@ package xlfill
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Context holds template data and provides expression evaluation.
 // It manages both user-provided data and loop iteration variables (runVars).
 type Context struct {
-	data          map[string]any
-	runVars       map[string]any
-	evaluator     ExpressionEvaluator
-	notationBegin string
-	notationEnd   string
+	data           map[string]any
+	runVars        map[string]any
+	evaluator      ExpressionEvaluator
+	notationBegin  string
+	notationEnd    string
 	updateCellData bool
 	clearCells     bool
+
+	// Cached merged map for expression evaluation.
+	// Invalidated (set to nil) whenever runVars change.
+	cachedMap map[string]any
 }
 
 // ContextOption configures a Context.
@@ -79,11 +84,13 @@ func (c *Context) GetVar(name string) any {
 // PutVar sets a variable in the data map.
 func (c *Context) PutVar(name string, value any) {
 	c.data[name] = value
+	c.invalidateCache()
 }
 
 // RemoveVar removes a variable from the data map.
 func (c *Context) RemoveVar(name string) {
 	delete(c.data, name)
+	c.invalidateCache()
 }
 
 // ContainsVar returns true if the variable exists in either runVars or data.
@@ -97,7 +104,11 @@ func (c *Context) ContainsVar(name string) bool {
 
 // ToMap returns a merged map of data and runVars. RunVars override data.
 // Built-in functions are always available.
+// The result is cached and reused until runVars are modified.
 func (c *Context) ToMap() map[string]any {
+	if c.cachedMap != nil {
+		return c.cachedMap
+	}
 	m := make(map[string]any, len(c.data)+len(c.runVars)+2)
 	for k, v := range c.data {
 		m[k] = v
@@ -109,7 +120,13 @@ func (c *Context) ToMap() map[string]any {
 	if _, ok := m["hyperlink"]; !ok {
 		m["hyperlink"] = Hyperlink
 	}
+	c.cachedMap = m
 	return m
+}
+
+// invalidateCache clears the cached merged map.
+func (c *Context) invalidateCache() {
+	c.cachedMap = nil
 }
 
 // Evaluate evaluates an expression string using the merged data.
@@ -155,7 +172,7 @@ func (c *Context) EvaluateCellValue(value string) (any, CellType, error) {
 	}
 
 	// Build result string
-	result := ""
+	var b strings.Builder
 	for _, seg := range segments {
 		if seg.IsExpression {
 			val, err := c.Evaluate(seg.Text)
@@ -163,13 +180,13 @@ func (c *Context) EvaluateCellValue(value string) (any, CellType, error) {
 				return nil, CellBlank, fmt.Errorf("evaluate expression %q in %q: %w", seg.Text, value, err)
 			}
 			if val != nil {
-				result += fmt.Sprintf("%v", val)
+				fmt.Fprintf(&b, "%v", val)
 			}
 		} else {
-			result += seg.Text
+			b.WriteString(seg.Text)
 		}
 	}
-	return result, CellString, nil
+	return b.String(), CellString, nil
 }
 
 // inferCellType determines the CellType from a Go value.
@@ -194,11 +211,13 @@ func inferCellType(v any) CellType {
 // setRunVar sets a run variable (loop iteration variable).
 func (c *Context) setRunVar(name string, value any) {
 	c.runVars[name] = value
+	c.invalidateCache()
 }
 
 // removeRunVar removes a run variable.
 func (c *Context) removeRunVar(name string) {
 	delete(c.runVars, name)
+	c.invalidateCache()
 }
 
 // RunVar manages scoped loop variables with automatic save/restore.

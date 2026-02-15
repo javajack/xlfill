@@ -24,12 +24,8 @@ func (c *AutoRowHeightCommand) ApplyAt(cellRef CellRef, ctx *Context, tx Transfo
 	}
 
 	// Set each output row to auto-height by setting height to -1
-	// (excelize interprets 0 as default height; we use a small positive to trigger auto)
 	for row := 0; row < size.Height; row++ {
-		ref := NewCellRef(cellRef.Sheet, cellRef.Row+row, cellRef.Col)
-		if etx, ok := tx.(*ExcelizeTransformer); ok {
-			etx.file.SetRowHeight(ref.Sheet, ref.Row+1, -1)
-		}
+		tx.SetRowHeight(cellRef.Sheet, cellRef.Row+row, -1)
 	}
 
 	return size, nil

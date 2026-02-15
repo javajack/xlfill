@@ -3,8 +3,8 @@ package xlfill
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -14,9 +14,7 @@ type ExcelizeTransformer struct {
 	file       *excelize.File
 	sheets     map[string]*SheetData // in-memory sheet data read from template
 	styleCache map[string]int        // "Sheet!A1" → styleID for preservation
-	targetRefs map[string][]CellRef  // "Sheet!A1" → list of target positions
-
-	mu sync.Mutex // protects concurrent access
+	targetRefs map[CellRef][]CellRef // source CellRef → list of target positions
 }
 
 // NewExcelizeTransformer creates a Transformer from an excelize file.
@@ -25,7 +23,7 @@ func NewExcelizeTransformer(f *excelize.File) (*ExcelizeTransformer, error) {
 		file:       f,
 		sheets:     make(map[string]*SheetData),
 		styleCache: make(map[string]int),
-		targetRefs: make(map[string][]CellRef),
+		targetRefs: make(map[CellRef][]CellRef),
 	}
 	if err := tx.readAllCellData(); err != nil {
 		return nil, fmt.Errorf("read template data: %w", err)
@@ -51,21 +49,25 @@ func (tx *ExcelizeTransformer) readAllCellData() error {
 			Rows:         make(map[int]*RowData),
 		}
 
-		// Read column widths
-		cols, err := tx.file.GetCols(sheet)
-		if err == nil {
-			for i := range cols {
-				w, err := tx.file.GetColWidth(sheet, ColToName(i))
-				if err == nil {
-					sd.ColumnWidths[i] = w
-				}
-			}
-		}
-
 		// Read all rows
 		rows, err := tx.file.GetRows(sheet)
 		if err != nil {
 			return fmt.Errorf("read rows from sheet %q: %w", sheet, err)
+		}
+
+		// Determine max column count from row data to read column widths
+		maxCols := 0
+		for _, row := range rows {
+			if len(row) > maxCols {
+				maxCols = len(row)
+			}
+		}
+		// Read column widths only for columns that have data
+		for i := 0; i < maxCols; i++ {
+			w, err := tx.file.GetColWidth(sheet, ColToName(i))
+			if err == nil {
+				sd.ColumnWidths[i] = w
+			}
 		}
 
 		for rowIdx, row := range rows {
@@ -78,7 +80,7 @@ func (tx *ExcelizeTransformer) readAllCellData() error {
 			}
 
 			for colIdx, cellVal := range row {
-				cellName := ColToName(colIdx) + fmt.Sprintf("%d", rowIdx+1)
+				cellName := ColToName(colIdx) + strconv.Itoa(rowIdx+1)
 				ref := NewCellRef(sheet, rowIdx, colIdx)
 
 				cd := &CellData{
@@ -192,8 +194,6 @@ func (tx *ExcelizeTransformer) GetFormulaCells() []*CellData {
 
 // Transform copies a cell from source to target position, evaluating expressions.
 func (tx *ExcelizeTransformer) Transform(src, target CellRef, ctx *Context, updateRowHeight bool) error {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
 
 	srcData := tx.GetCellData(src)
 	if srcData == nil {
@@ -288,8 +288,6 @@ func (tx *ExcelizeTransformer) writeTypedValue(sheet, cell string, value any, ce
 
 // ClearCell clears a cell's content while preserving style.
 func (tx *ExcelizeTransformer) ClearCell(ref CellRef) error {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
 
 	sheet := ref.Sheet
 	cell := ref.CellName()
@@ -305,15 +303,12 @@ func (tx *ExcelizeTransformer) ClearCell(ref CellRef) error {
 
 // SetFormula sets a formula on a cell.
 func (tx *ExcelizeTransformer) SetFormula(ref CellRef, formula string) error {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
+
 	return tx.file.SetCellFormula(ref.Sheet, ref.CellName(), formula)
 }
 
 // SetCellValue sets a value on a cell, preserving style.
 func (tx *ExcelizeTransformer) SetCellValue(ref CellRef, value any) error {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
 
 	sheet := ref.Sheet
 	cell := ref.CellName()
@@ -327,17 +322,16 @@ func (tx *ExcelizeTransformer) SetCellValue(ref CellRef, value any) error {
 
 // GetTargetCellRef returns where a source cell was mapped to during transformation.
 func (tx *ExcelizeTransformer) GetTargetCellRef(src CellRef) []CellRef {
-	return tx.targetRefs[src.String()]
+	return tx.targetRefs[src]
 }
 
 // ResetTargetCellRefs clears all source→target mappings.
 func (tx *ExcelizeTransformer) ResetTargetCellRefs() {
-	tx.targetRefs = make(map[string][]CellRef)
+	tx.targetRefs = make(map[CellRef][]CellRef)
 }
 
 func (tx *ExcelizeTransformer) addTargetRef(src, target CellRef) {
-	key := src.String()
-	tx.targetRefs[key] = append(tx.targetRefs[key], target)
+	tx.targetRefs[src] = append(tx.targetRefs[src], target)
 }
 
 // GetSheetNames returns all sheet names.
@@ -361,6 +355,11 @@ func (tx *ExcelizeTransformer) GetRowHeight(sheet string, row int) float64 {
 		return 0
 	}
 	return h
+}
+
+// SetRowHeight sets the row height for a sheet/row (0-based row index).
+func (tx *ExcelizeTransformer) SetRowHeight(sheet string, row int, height float64) error {
+	return tx.file.SetRowHeight(sheet, row+1, height)
 }
 
 // DeleteSheet removes a sheet from the workbook.
@@ -393,8 +392,6 @@ func (tx *ExcelizeTransformer) CopySheet(src, dst string) error {
 
 // AddImage inserts an image into a sheet.
 func (tx *ExcelizeTransformer) AddImage(sheet string, cell string, imgBytes []byte, imgType string, scaleX, scaleY float64) error {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
 
 	ext := ".png"
 	switch strings.ToUpper(imgType) {
@@ -415,15 +412,12 @@ func (tx *ExcelizeTransformer) AddImage(sheet string, cell string, imgBytes []by
 
 // MergeCells merges a cell range.
 func (tx *ExcelizeTransformer) MergeCells(sheet, topLeft, bottomRight string) error {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
+
 	return tx.file.MergeCell(sheet, topLeft, bottomRight)
 }
 
 // SetCellHyperLink sets a hyperlink on a cell.
 func (tx *ExcelizeTransformer) SetCellHyperLink(ref CellRef, url, display string) error {
-	tx.mu.Lock()
-	defer tx.mu.Unlock()
 
 	cell := ref.CellName()
 	linkType := "External"
