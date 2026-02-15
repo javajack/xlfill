@@ -4,6 +4,25 @@ A template-first Excel filling library for Go. Design your `.xlsx` templates in 
 
 Inspired by [JXLS 3.0](https://jxls.sourceforge.net/) — ported to idiomatic Go.
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/javajack/xlfill.svg)](https://pkg.go.dev/github.com/javajack/xlfill)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## The Idea
+
+You design your report in Excel — fonts, colors, borders, number formats — then XLFill fills it with data. No styling code. The template *is* the design.
+
+**Here's a template you'd design:**
+
+<img src="docs/images/template.png" alt="An Excel template with expressions like ${e.Name} and a jx:each command in a cell comment" width="600" />
+
+Put `${e.Name}`, `${e.Age}`, `${e.Payment}` in cells. Add a `jx:each(...)` command in a cell comment. That's it.
+
+**And here's what XLFill produces:**
+
+<img src="docs/images/output.png" alt="The filled Excel output with real employee data, all formatting preserved" width="600" />
+
+Same fonts. Same colors. Same borders. You didn't write a single line of code for any of that styling.
+
 ## Install
 
 ```bash
@@ -11,13 +30,6 @@ go get github.com/javajack/xlfill
 ```
 
 ## Quick Start
-
-Given a template file `template.xlsx` where:
-
-- Cell `A1` has a comment: `jx:area(lastCell="C1")\njx:each(items="employees" var="e" lastCell="C1")`
-- Cell `A1` contains `${e.Name}`
-- Cell `B1` contains `${e.Age}`
-- Cell `C1` contains `${e.Department}`
 
 ```go
 package main
@@ -40,7 +52,7 @@ func main() {
 }
 ```
 
-The output file will have one row per employee, with all template formatting preserved.
+One function call. All template formatting preserved.
 
 ## Template Syntax
 
@@ -291,6 +303,29 @@ Formulas can contain `${...}` expressions that are resolved from context data be
 =A1*${rate}+${bonus}  → =A1*0.1+500
 ```
 
+## Template Validation & Debugging
+
+Catch template issues before runtime — no data required:
+
+```go
+// Validate expressions, command attributes, and bounds
+issues, err := xlfill.Validate("template.xlsx")
+for _, issue := range issues {
+    fmt.Println(issue) // [ERROR] Sheet1!B2: invalid expression syntax "e.Name +": ...
+}
+
+// Inspect what the engine parsed from your template
+output, err := xlfill.Describe("template.xlsx")
+fmt.Print(output)
+// Template: template.xlsx
+// Sheet1!A1:C2 area (3x2)
+//   Commands:
+//     Sheet1!A2 each (3x1) items="employees" var="e"
+//       ...
+```
+
+See the full [Debugging & Troubleshooting](https://javajack.github.io/xlfill/guides/debugging/) guide.
+
 ## Performance
 
 Benchmarked on Intel i5-9300H @ 2.40GHz:
@@ -306,10 +341,27 @@ Benchmarked on Intel i5-9300H @ 2.40GHz:
 
 Scaling is linear. Memory usage is ~8.6 KB/row at scale.
 
+## Documentation
+
+Full documentation with guides, examples, and API reference:
+
+**[javajack.github.io/xlfill](https://javajack.github.io/xlfill/)**
+
+- [Getting Started](https://javajack.github.io/xlfill/guides/getting-started/) — build your first template in 5 minutes
+- [19 Runnable Examples](https://javajack.github.io/xlfill/reference/examples/) — every feature with downloadable templates
+- [API Reference](https://javajack.github.io/xlfill/reference/api/) — complete function, option, and type reference
+- [Debugging & Troubleshooting](https://javajack.github.io/xlfill/guides/debugging/) — Validate, Describe, and common fixes
+
 ## Requirements
 
 - Go 1.24+
 - Only `.xlsx` files are supported
+
+## Credits
+
+- [JXLS](https://jxls.sourceforge.net/) by Leonid Vysochyn — the Java Excel template engine that inspired XLFill's template-first approach
+- [excelize](https://github.com/qax-os/excelize) by Ri Xu — the Go Excel library that powers XLFill under the hood
+- [expr-lang](https://github.com/expr-lang/expr) — the expression evaluation engine
 
 ## License
 
