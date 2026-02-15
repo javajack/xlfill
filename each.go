@@ -229,13 +229,13 @@ func toStringSlice(val any) ([]string, error) {
 // filterItems applies the select expression to filter items.
 func (c *EachCommand) filterItems(items []any, ctx *Context) ([]any, error) {
 	var filtered []any
-	for _, item := range items {
+	for i, item := range items {
 		rv := NewRunVar(ctx, c.Var)
 		rv.Set(item)
 		ok, err := ctx.IsConditionTrue(c.Select)
 		rv.Close()
 		if err != nil {
-			return nil, fmt.Errorf("select filter %q: %w", c.Select, err)
+			return nil, fmt.Errorf("select filter %q at item %d: %w", c.Select, i, err)
 		}
 		if ok {
 			filtered = append(filtered, item)

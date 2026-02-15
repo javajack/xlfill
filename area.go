@@ -130,7 +130,7 @@ func (a *Area) processWithCommands(targetCell CellRef, ctx *Context) (Size, erro
 		cmdTarget := NewCellRef(targetCell.Sheet, currentTargetRow, targetCell.Col+cmdColStart)
 		cmdSize, err := binding.Command.ApplyAt(cmdTarget, ctx, a.Transformer)
 		if err != nil {
-			return ZeroSize, fmt.Errorf("command %s at %s: %w", binding.Command.Name(), cmdTarget, err)
+			return ZeroSize, fmt.Errorf("command %s (template %s) at target %s: %w", binding.Command.Name(), binding.StartRef, cmdTarget, err)
 		}
 
 		// Determine how many target rows this command band occupies.
