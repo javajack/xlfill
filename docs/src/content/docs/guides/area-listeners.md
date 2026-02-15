@@ -98,6 +98,10 @@ xlfill.WithClearTemplateCells(false)
 
 ## What's next?
 
+Area listeners are one of several debugging tools. For the complete toolkit — including `Validate()`, `Describe()`, and common troubleshooting tips:
+
+**[Debugging & Troubleshooting &rarr;](/xlfill/guides/debugging/)**
+
 For the complete list of functions, options, and types:
 
 **[API Reference &rarr;](/xlfill/reference/api/)**

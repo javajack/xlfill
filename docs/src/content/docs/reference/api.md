@@ -49,6 +49,55 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
+### Validate
+
+```go
+func Validate(templatePath string, opts ...Option) ([]ValidationIssue, error)
+```
+
+Check a template for structural and expression errors **without requiring data**. Returns a list of issues found. Use this in CI pipelines or during development to catch problems early.
+
+```go
+issues, err := xlfill.Validate("template.xlsx")
+if err != nil {
+    log.Fatal(err) // template couldn't be opened or parsed at all
+}
+for _, issue := range issues {
+    fmt.Println(issue) // [ERROR] Sheet1!B2: invalid expression syntax "e.Name +": ...
+}
+```
+
+What it checks:
+- **Expression syntax** — validates all `${...}` in cell values and formulas
+- **Command attributes** — validates `items`, `condition`, `select`, `headers`, `data` expressions
+- **Bounds** — verifies each command's `lastCell` fits within its parent area
+
+### Describe
+
+```go
+func Describe(templatePath string, opts ...Option) (string, error)
+```
+
+Parse a template and return a human-readable tree showing the area hierarchy, commands with attributes, and expressions found in cells. Useful for understanding what the engine "sees" when it reads your template.
+
+```go
+output, err := xlfill.Describe("template.xlsx")
+fmt.Print(output)
+```
+
+Sample output:
+```
+Template: template.xlsx
+Sheet1!A1:C2 area (3x2)
+  Commands:
+    Sheet1!A2 each (3x1) items="employees" var="e"
+      Sheet1!A2:C2 area (3x1)
+        Expressions:
+          A2: ${e.Name}
+          B2: ${e.Age}
+          C2: ${e.Salary}
+```
+
 ## Filler (advanced)
 
 For repeated fills or fine-grained control, create a `Filler`:
@@ -61,6 +110,10 @@ filler := xlfill.NewFiller(
 )
 
 err := filler.Fill(data, "output.xlsx")
+
+// Validate and Describe also available on Filler
+issues, err := filler.Validate()
+description, err := filler.Describe()
 ```
 
 ## Options
@@ -157,6 +210,26 @@ type AreaListener interface {
 }
 ```
 
+### ValidationIssue
+
+Returned by `Validate()`:
+
+```go
+type Severity int
+const (
+    SeverityError   Severity = iota // template will fail at runtime
+    SeverityWarning                 // template may produce unexpected results
+)
+
+type ValidationIssue struct {
+    Severity Severity
+    CellRef  CellRef
+    Message  string
+}
+```
+
+`String()` formats as `[ERROR] Sheet1!A2: message` or `[WARN] Sheet1!A2: message`.
+
 ## Data input
 
 The `data` parameter accepts `map[string]any`. Values can be:
@@ -172,6 +245,10 @@ The `data` parameter accepts `map[string]any`. Values can be:
 Nested access works via dot notation: `${employee.Address.City}`.
 
 ## What's next?
+
+Having trouble with a template? See the debugging toolkit:
+
+**[Debugging & Troubleshooting &rarr;](/xlfill/guides/debugging/)**
 
 Curious about how XLFill performs at scale?
 

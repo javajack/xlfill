@@ -70,6 +70,10 @@ export default defineConfig({
             { label: "Formulas", slug: "guides/formulas" },
             { label: "Custom Commands", slug: "guides/custom-commands" },
             { label: "Area Listeners", slug: "guides/area-listeners" },
+            {
+              label: "Debugging & Troubleshooting",
+              slug: "guides/debugging",
+            },
           ],
         },
         {
