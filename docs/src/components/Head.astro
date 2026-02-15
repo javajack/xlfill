@@ -1,0 +1,149 @@
+---
+import type { Props } from '@astrojs/starlight/props';
+import StarlightHead from '@astrojs/starlight/components/Head.astro';
+
+const { entry, siteTitle } = Astro.props;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+
+// Handle cases where entry might not exist (like 404 page)
+const hasEntry = entry && entry.data;
+const pageTitle = hasEntry ? entry.data.title : 'Page Not Found';
+const pageDescription = hasEntry ? (entry.data.description || `${entry.data.title} - XLFill Documentation`) : 'XLFill Documentation';
+
+// Build Schema.org structured data
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": pageTitle,
+  "description": pageDescription,
+  "author": {
+    "@type": "Person",
+    "name": "Rakesh Waghela",
+    "url": "https://x.com/webiyo",
+    "sameAs": [
+      "https://www.linkedin.com/in/rakeshwaghela",
+      "https://github.com/javajack",
+      "https://topmate.io/rakeshwaghela"
+    ]
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "XLFill",
+    "url": "https://javajack.github.io/xlfill/",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://javajack.github.io/xlfill/favicon.svg"
+    }
+  },
+  "url": canonicalURL.href,
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": canonicalURL.href
+  },
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://javajack.github.io/xlfill/",
+    "name": "XLFill Documentation"
+  },
+  "inLanguage": "en-US",
+  "about": {
+    "@type": "SoftwareApplication",
+    "name": "XLFill",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Cross-platform",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+};
+
+// Add dates if available in frontmatter
+if (hasEntry) {
+  if (entry.data.pubDate || entry.data.publishDate) {
+    jsonLd.datePublished = (entry.data.pubDate || entry.data.publishDate).toISOString();
+  }
+  if (entry.data.lastModified || entry.data.updatedDate) {
+    jsonLd.dateModified = (entry.data.lastModified || entry.data.updatedDate).toISOString();
+  }
+}
+
+// Build breadcrumb schema
+const pathParts = Astro.url.pathname.split('/').filter(Boolean);
+const breadcrumbItems = [
+  {
+    "@type": "ListItem",
+    "position": 1,
+    "name": "Home",
+    "item": "https://javajack.github.io/xlfill/"
+  }
+];
+
+let currentPath = "https://javajack.github.io";
+pathParts.forEach((part, index) => {
+  currentPath += `/${part}`;
+  breadcrumbItems.push({
+    "@type": "ListItem",
+    "position": index + 2,
+    "name": part.charAt(0).toUpperCase() + part.slice(1).replace(/-/g, ' '),
+    "item": currentPath
+  });
+});
+
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": breadcrumbItems
+};
+
+// Organization schema for the main site
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "XLFill",
+  "url": "https://javajack.github.io/xlfill/",
+  "logo": "https://javajack.github.io/xlfill/favicon.svg",
+  "description": "A Go library for template-first Excel report generation. Design in Excel, fill with Go.",
+  "founder": {
+    "@type": "Person",
+    "name": "Rakesh Waghela",
+    "url": "https://x.com/webiyo"
+  },
+  "sameAs": [
+    "https://github.com/javajack/xlfill",
+    "https://x.com/webiyo",
+    "https://www.linkedin.com/in/rakeshwaghela"
+  ]
+};
+---
+
+<StarlightHead {...Astro.props}>
+  <!-- Schema.org structured data for this page -->
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+
+  <!-- Breadcrumb schema -->
+  <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
+
+  <!-- Organization schema (on homepage) -->
+  {Astro.url.pathname === '/xlfill/' || Astro.url.pathname === '/xlfill' ? (
+    <script type="application/ld+json" set:html={JSON.stringify(organizationSchema)} />
+  ) : null}
+
+  <!-- Additional SEO meta tags -->
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+  <link rel="canonical" href={canonicalURL.href} />
+
+  <!-- Open Graph meta tags -->
+  <meta property="og:type" content="article" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="article:author" content="Rakesh Waghela" />
+
+  <!-- Additional Twitter Card optimization -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@webiyo" />
+  <meta name="twitter:creator" content="@webiyo" />
+
+  <!-- Language and charset (already in Starlight but ensuring) -->
+  <meta name="language" content="English" />
+</StarlightHead>

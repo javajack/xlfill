@@ -1,0 +1,20 @@
+# XLFill Documentation - robots.txt
+# Updated: 2026-02-15
+
+User-agent: *
+Allow: /
+
+# Block search result pages if any
+Disallow: /search
+Disallow: /*?q=*
+Disallow: /*?search=*
+
+# Allow CSS, JS, and assets for proper page rendering
+Allow: /*.css
+Allow: /*.js
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.svg
+
+# Sitemap location
+Sitemap: https://javajack.github.io/xlfill/sitemap-index.xml
