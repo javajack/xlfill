@@ -16,7 +16,6 @@ export default defineConfig({
       components: {
         Footer: "./src/components/Footer.astro",
         Head: "./src/components/Head.astro",
-        PageFrame: "./src/components/PageFrame.astro",
       },
       head: [
         // Google Consent Mode v2 - MUST load BEFORE gtag.js (synchronous)
@@ -135,6 +134,8 @@ export default defineConfig({
             content: "Rakesh Waghela",
           },
         },
+        // Cookie Consent Banner (injected via script)
+        { tag: "script", attrs: { defer: true, src: "/xlfill/cookie-consent.js" } },
       ],
       social: [
         {
