@@ -16,8 +16,59 @@ export default defineConfig({
       components: {
         Footer: "./src/components/Footer.astro",
         Head: "./src/components/Head.astro",
+        PageFrame: "./src/components/PageFrame.astro",
       },
       head: [
+        // Google Consent Mode v2 - MUST load BEFORE gtag.js (synchronous)
+        {
+          tag: "script",
+          content: `
+            // Initialize dataLayer and gtag function
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+
+            // Regional scoping: Detect if user is in GDPR region
+            function isGDPRRegion() {
+              const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+              const euTimezones = ['Europe/', 'Atlantic/Reykjavik', 'Atlantic/Azores', 'Atlantic/Madeira'];
+              return euTimezones.some(zone => tz.startsWith(zone));
+            }
+
+            // Set consent defaults based on region
+            const isGDPR = isGDPRRegion();
+
+            gtag('consent', 'default', {
+              'ad_storage': 'denied',
+              'ad_user_data': 'denied',
+              'ad_personalization': 'denied',
+              'analytics_storage': isGDPR ? 'denied' : 'granted',
+              'functionality_storage': 'granted',
+              'personalization_storage': 'denied',
+              'security_storage': 'granted',
+              'wait_for_update': 500,
+            });
+
+            // Store GDPR flag for banner logic
+            window.__isGDPRRegion = isGDPR;
+          `,
+        },
+        // Google Analytics - Load gtag.js (async, after consent default)
+        {
+          tag: "script",
+          attrs: { async: true, src: "https://www.googletagmanager.com/gtag/js?id=G-G986QLPFZ1" },
+        },
+        {
+          tag: "script",
+          content: `
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-G986QLPFZ1', {
+              'anonymize_ip': true,
+              'cookie_flags': 'SameSite=None;Secure'
+            });
+          `,
+        },
         // Default Open Graph image for all pages
         {
           tag: "meta",
