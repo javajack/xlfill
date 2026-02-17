@@ -134,8 +134,40 @@ export default defineConfig({
             content: "Rakesh Waghela",
           },
         },
+        // Yandex Webmaster verification
+        { tag: "meta", attrs: { name: "yandex-verification", content: "5281e40eca9463d2" } },
+        // Cloudflare Web Analytics
+        { tag: "script", attrs: { defer: true, src: "https://static.cloudflareinsights.com/beacon.min.js", "data-cf-beacon": '{"token": "7ce325bb227e4b42a8406f369ff4e788"}' } },
         // Cookie Consent Banner (injected via script)
         { tag: "script", attrs: { defer: true, src: "/xlfill/cookie-consent.js" } },
+        // Structured Data (JSON-LD)
+        {
+          tag: "script",
+          attrs: { type: "application/ld+json" },
+          content: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "WebSite",
+                name: "XLFill",
+                url: "https://javajack.github.io/xlfill/",
+                description: "A Go library for template-first Excel report generation. Design in Excel, fill with Go.",
+                author: { "@id": "#rakesh" },
+              },
+              {
+                "@type": "Person",
+                "@id": "#rakesh",
+                name: "Rakesh Waghela",
+                url: "https://www.linkedin.com/in/rakeshwaghela",
+                sameAs: [
+                  "https://x.com/webiyo",
+                  "https://www.linkedin.com/in/rakeshwaghela",
+                  "https://topmate.io/rakeshwaghela",
+                ],
+              },
+            ],
+          }),
+        },
       ],
       social: [
         {
