@@ -1,10 +1,12 @@
 package xlfill
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 )
 
 // EachCommand implements the jx:each command for iterating over collections.
@@ -62,7 +64,7 @@ func (c *EachCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transfo
 	// Convert to iterable slice
 	items, err := toSlice(itemsVal)
 	if err != nil {
-		return ZeroSize, fmt.Errorf("items %q is not iterable: %w", c.Items, err)
+		return ZeroSize, fmt.Errorf("items %q is not iterable (got %T): %w", c.Items, itemsVal, err)
 	}
 
 	if len(items) == 0 {
@@ -97,12 +99,24 @@ func (c *EachCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transfo
 		return ZeroSize, fmt.Errorf("each command has no area")
 	}
 
+	// Debug trace
+	if c.Area.debug != nil {
+		c.Area.debug.TraceEachStart(len(items), c.Var, c.Direction)
+		c.Area.debug.Indent()
+		defer c.Area.debug.Dedent()
+	}
+
 	// Multisheet mode: each item gets its own sheet
 	if c.MultiSheet != "" {
 		return c.applyMultiSheet(cellRef, ctx, transformer, items)
 	}
 
-	// Iterate
+	// Parallel mode: for DOWN direction with fixed-height areas and enough items
+	if c.Area.parallelism > 1 && c.Direction == "DOWN" && c.isFixedHeight() && len(items) >= c.Area.parallelism {
+		return c.applyParallel(cellRef, ctx, transformer, items, c.Area.parallelism)
+	}
+
+	// Iterate (sequential)
 	isRight := c.Direction == "RIGHT"
 	totalSize := ZeroSize
 
@@ -123,6 +137,11 @@ func (c *EachCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transfo
 			iterTarget = NewCellRef(cellRef.Sheet, cellRef.Row, cellRef.Col+totalSize.Width)
 		} else {
 			iterTarget = NewCellRef(cellRef.Sheet, cellRef.Row+totalSize.Height, cellRef.Col)
+		}
+
+		// Debug trace iteration
+		if c.Area.debug != nil {
+			c.Area.debug.TraceIteration(i, iterTarget)
 		}
 
 		// Apply area at target
@@ -228,7 +247,7 @@ func toStringSlice(val any) ([]string, error) {
 
 // filterItems applies the select expression to filter items.
 func (c *EachCommand) filterItems(items []any, ctx *Context) ([]any, error) {
-	var filtered []any
+	filtered := make([]any, 0, len(items)/2) // pre-allocate with estimate
 	for i, item := range items {
 		rv := NewRunVar(ctx, c.Var)
 		rv.Set(item)
@@ -349,6 +368,9 @@ func parseOrderBy(spec string, varName string) []orderBySpec {
 			continue
 		}
 		tokens := strings.Fields(p)
+		if len(tokens) == 0 {
+			continue
+		}
 		field := tokens[0]
 		// Strip var prefix
 		if strings.HasPrefix(field, prefix) {
@@ -460,12 +482,184 @@ func toFloat64(v any) (float64, bool) {
 		return float64(n), true
 	case int64:
 		return float64(n), true
+	case uint:
+		return float64(n), true
+	case uint8:
+		return float64(n), true
+	case uint16:
+		return float64(n), true
+	case uint32:
+		return float64(n), true
+	case uint64:
+		return float64(n), true
 	case float32:
 		return float64(n), true
 	case float64:
 		return n, true
 	}
 	return 0, false
+}
+
+// isFixedHeight returns true if the each command's area has a fixed output height
+// per iteration — i.e., no nested EachCommand or RepeatCommand that could expand it.
+func (c *EachCommand) isFixedHeight() bool {
+	if c.Area == nil {
+		return true
+	}
+	return isAreaFixedHeight(c.Area)
+}
+
+// isAreaFixedHeight recursively checks if an area has fixed output size.
+func isAreaFixedHeight(area *Area) bool {
+	for _, b := range area.Bindings {
+		switch cmd := b.Command.(type) {
+		case *EachCommand:
+			return false // nested each can change height
+		case *RepeatCommand:
+			return false // repeat can change height
+		case *IfCommand:
+			// if with different-sized branches can change height
+			if cmd.IfArea != nil && cmd.ElseArea != nil {
+				if cmd.IfArea.AreaSize.Height != cmd.ElseArea.AreaSize.Height {
+					return false
+				}
+			}
+			if cmd.IfArea != nil && !isAreaFixedHeight(cmd.IfArea) {
+				return false
+			}
+			if cmd.ElseArea != nil && !isAreaFixedHeight(cmd.ElseArea) {
+				return false
+			}
+		default:
+			if childArea := getCommandArea(b.Command); childArea != nil {
+				if !isAreaFixedHeight(childArea) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+// applyParallel processes items concurrently using pre-computed row offsets.
+// Only safe for fixed-height areas with DOWN direction.
+func (c *EachCommand) applyParallel(cellRef CellRef, ctx *Context, transformer Transformer, items []any, parallelism int) (Size, error) {
+	areaHeight := c.Area.AreaSize.Height
+	n := len(items)
+
+	if c.Area.debug != nil {
+		c.Area.debug.TraceEachStart(n, c.Var, c.Direction+" (parallel)")
+	}
+
+	// Create a cancellable context derived from area's context (if any).
+	// This pctx is propagated to each goroutine's area processing so that
+	// cancellation from error or timeout reaches checkCancelled().
+	pctx, cancel := context.WithCancel(context.Background())
+	if c.Area.ctx != nil {
+		pctx, cancel = context.WithCancel(c.Area.ctx)
+	}
+	defer cancel()
+
+	// Save and restore the area's context — we temporarily replace it with pctx
+	// so that checkCancelled() in child goroutines sees our cancellation signal.
+	origCtx := c.Area.ctx
+	c.Area.ctx = pctx
+	defer func() { c.Area.ctx = origCtx }()
+
+	type iterResult struct {
+		size Size
+		err  error
+	}
+
+	results := make([]iterResult, n)
+	sem := make(chan struct{}, parallelism)
+	var wg sync.WaitGroup
+	var errOnce sync.Once
+	var firstErr error
+
+	for i, item := range items {
+		// Acquire semaphore or bail on cancellation — the select ensures
+		// we don't block on a full semaphore when pctx is cancelled.
+		select {
+		case <-pctx.Done():
+			// Another goroutine errored or parent context was cancelled.
+		case sem <- struct{}{}:
+			// Acquired semaphore slot — proceed to launch goroutine.
+			wg.Add(1)
+			go func(idx int, val any) {
+				defer wg.Done()
+				defer func() { <-sem }()
+
+				// Recover from panics in area processing
+				defer func() {
+					if r := recover(); r != nil {
+						errOnce.Do(func() {
+							firstErr = fmt.Errorf("parallel each iteration %d panicked: %v", idx, r)
+							cancel()
+						})
+					}
+				}()
+
+				// Check cancellation before starting work
+				if pctx.Err() != nil {
+					results[idx] = iterResult{err: pctx.Err()}
+					return
+				}
+
+				// Clone context for this goroutine (independent runVars)
+				ctxClone := ctx.Clone()
+
+				var rv *RunVar
+				if c.VarIndex != "" {
+					rv = NewRunVarWithIndex(ctxClone, c.Var, c.VarIndex)
+					rv.SetWithIndex(val, idx)
+				} else {
+					rv = NewRunVar(ctxClone, c.Var)
+					rv.Set(val)
+				}
+
+				targetRow := cellRef.Row + idx*areaHeight
+				iterTarget := NewCellRef(cellRef.Sheet, targetRow, cellRef.Col)
+
+				size, err := c.Area.ApplyAt(iterTarget, ctxClone)
+				rv.Close()
+
+				results[idx] = iterResult{size: size, err: err}
+				if err != nil {
+					errOnce.Do(func() {
+						firstErr = fmt.Errorf("parallel each iteration %d: %w", idx, err)
+						cancel()
+					})
+				}
+			}(i, item)
+
+			continue // next item
+		}
+		break // pctx.Done() was selected — exit loop
+	}
+
+	wg.Wait()
+
+	if firstErr != nil {
+		return ZeroSize, firstErr
+	}
+
+	// Check for any per-iteration errors (e.g., from cancellation)
+	for i, r := range results {
+		if r.err != nil {
+			return ZeroSize, fmt.Errorf("parallel each iteration %d: %w", i, r.err)
+		}
+	}
+
+	// Compute total size
+	totalSize := ZeroSize
+	for _, r := range results {
+		totalSize.Height += r.size.Height
+		if r.size.Width > totalSize.Width {
+			totalSize.Width = r.size.Width
+		}
+	}
+	return totalSize, nil
 }
 
 // toSlice converts any iterable value to a []any slice.

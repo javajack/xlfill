@@ -47,6 +47,7 @@ Here's every command available, in order of how often you'll use them:
 
 | Command | What it does | Page |
 |---------|-------------|------|
+| **[jx:repeat](/xlfill/commands/repeat/)** | Repeats an area N times without needing a collection. Great for blank rows, padding, and numbered rows. | [Details &rarr;](/xlfill/commands/repeat/) |
 | **[jx:grid](/xlfill/commands/grid/)** | Fills a dynamic grid with headers and data rows. Great for pivot-style reports. | [Details &rarr;](/xlfill/commands/grid/) |
 | **[jx:image](/xlfill/commands/image/)** | Inserts an image from byte data. Photos, logos, charts. | [Details &rarr;](/xlfill/commands/image/) |
 | **[jx:mergeCells](/xlfill/commands/mergecells/)** | Merges cells in a range. Useful for section headers in loops. | [Details &rarr;](/xlfill/commands/mergecells/) |

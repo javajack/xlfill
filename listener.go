@@ -11,3 +11,21 @@ type AreaListener interface {
 	// AfterTransformCell is called after a cell has been transformed.
 	AfterTransformCell(src, target CellRef, ctx *Context, tx Transformer)
 }
+
+// StyleOverride specifies style modifications to apply to a cell after transformation.
+// Nil fields are ignored (no change). Non-nil fields override the cell's current style.
+type StyleOverride struct {
+	Bold      *bool
+	Italic    *bool
+	FontColor *string // hex color e.g. "#FF0000"
+	FillColor *string // hex background color
+	FontSize  *float64
+}
+
+// StyleListener is called after cell transformation to optionally modify styling.
+// It extends the AreaListener pattern with richer style control.
+type StyleListener interface {
+	// StyleCell is called after a cell is transformed. Return nil to leave styling unchanged.
+	// The value parameter contains the evaluated cell value.
+	StyleCell(target CellRef, value any, ctx *Context) *StyleOverride
+}

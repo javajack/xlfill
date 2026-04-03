@@ -1,5 +1,7 @@
 package xlfill
 
+import "sort"
+
 // Command represents a template processing command (jx:each, jx:if, etc.).
 type Command interface {
 	Name() string
@@ -27,6 +29,7 @@ func NewCommandRegistry() *CommandRegistry {
 	r.Register("mergeCells", newMergeCellsCommandFromAttrs)
 	r.Register("updateCell", newUpdateCellCommandFromAttrs)
 	r.Register("autoRowHeight", newAutoRowHeightCommandFromAttrs)
+	r.Register("repeat", newRepeatCommandFromAttrs)
 	return r
 }
 
@@ -36,10 +39,22 @@ func (r *CommandRegistry) Register(name string, factory CommandFactory) {
 }
 
 // Create creates a Command from parsed command data.
+// Returns (nil, nil) if the command is not registered. The caller (Filler)
+// is responsible for handling unknown commands based on strict mode.
 func (r *CommandRegistry) Create(name string, attrs map[string]string) (Command, error) {
 	factory, ok := r.factories[name]
 	if !ok {
-		return nil, nil // unknown commands are silently ignored
+		return nil, nil // unknown command — caller decides how to handle
 	}
 	return factory(attrs)
+}
+
+// KnownNames returns all registered command names in sorted order.
+func (r *CommandRegistry) KnownNames() []string {
+	names := make([]string, 0, len(r.factories))
+	for name := range r.factories {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }

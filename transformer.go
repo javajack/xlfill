@@ -2,34 +2,43 @@ package xlfill
 
 import "io"
 
-// Transformer abstracts Excel I/O operations. It reads template data into memory
-// and provides methods to transform cells from source to target positions.
-type Transformer interface {
-	// Cell data access
+// CellReader provides read access to cell data.
+type CellReader interface {
 	GetCellData(ref CellRef) *CellData
 	GetCommentedCells() []*CellData
 	GetFormulaCells() []*CellData
+}
 
-	// Cell transformation
+// CellWriter provides write access to cells.
+type CellWriter interface {
 	Transform(src, target CellRef, ctx *Context, updateRowHeight bool) error
 	ClearCell(ref CellRef) error
 	SetFormula(ref CellRef, formula string) error
 	SetCellValue(ref CellRef, value any) error
+}
 
-	// Target tracking for formula processing
-	GetTargetCellRef(src CellRef) []CellRef
-	ResetTargetCellRefs()
-
-	// Sheet data
+// SheetManager provides sheet-level operations.
+type SheetManager interface {
 	GetSheetNames() []string
 	GetColumnWidth(sheet string, col int) float64
 	GetRowHeight(sheet string, row int) float64
 	SetRowHeight(sheet string, row int, height float64) error
-
-	// Sheet operations
 	DeleteSheet(name string) error
 	SetHidden(name string, hidden bool) error
 	CopySheet(src, dst string) error
+}
+
+// Transformer abstracts Excel I/O operations. It reads template data into memory
+// and provides methods to transform cells from source to target positions.
+// Transformer composes CellReader, CellWriter, and SheetManager for cleaner separation.
+type Transformer interface {
+	CellReader
+	CellWriter
+	SheetManager
+
+	// Target tracking for formula processing
+	GetTargetCellRef(src CellRef) []CellRef
+	ResetTargetCellRefs()
 
 	// Image/merge/hyperlink
 	AddImage(sheet string, cell string, imgBytes []byte, imgType string, scaleX, scaleY float64) error

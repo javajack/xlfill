@@ -15,6 +15,10 @@ type ExcelizeTransformer struct {
 	sheets     map[string]*SheetData // in-memory sheet data read from template
 	styleCache map[string]int        // "Sheet!A1" → styleID for preservation
 	targetRefs map[CellRef][]CellRef // source CellRef → list of target positions
+
+	// Pre-counted cell stats for pre-allocation
+	commentCellCount int
+	formulaCellCount int
 }
 
 // NewExcelizeTransformer creates a Transformer from an excelize file.
@@ -138,6 +142,18 @@ func (tx *ExcelizeTransformer) readAllCellData() error {
 		}
 
 		tx.sheets[sheet] = sd
+
+		// Count commented and formula cells for pre-allocation
+		for _, rd := range sd.Rows {
+			for _, cd := range rd.Cells {
+				if cd.Comment != "" {
+					tx.commentCellCount++
+				}
+				if cd.IsFormulaCell() {
+					tx.formulaCellCount++
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -164,7 +180,7 @@ func (tx *ExcelizeTransformer) GetCellData(ref CellRef) *CellData {
 
 // GetCommentedCells returns all cells that have comments (for template parsing).
 func (tx *ExcelizeTransformer) GetCommentedCells() []*CellData {
-	var result []*CellData
+	result := make([]*CellData, 0, tx.commentCellCount)
 	for _, sd := range tx.sheets {
 		for _, rd := range sd.Rows {
 			for _, cd := range rd.Cells {
@@ -179,7 +195,7 @@ func (tx *ExcelizeTransformer) GetCommentedCells() []*CellData {
 
 // GetFormulaCells returns all cells that contain formulas.
 func (tx *ExcelizeTransformer) GetFormulaCells() []*CellData {
-	var result []*CellData
+	result := make([]*CellData, 0, tx.formulaCellCount)
 	for _, sd := range tx.sheets {
 		for _, rd := range sd.Rows {
 			for _, cd := range rd.Cells {

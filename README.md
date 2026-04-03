@@ -183,6 +183,21 @@ Auto-fits row height after content is written. Useful when cells contain wrapped
 jx:autoRowHeight(lastCell="C1")
 ```
 
+#### jx:repeat
+
+Repeats an area N times without needing a collection. Perfect for blank invoice lines and padding.
+
+```
+jx:repeat(count="10" var="i" lastCell="C1")
+```
+
+| Attribute   | Description                                      | Default |
+|-------------|--------------------------------------------------|---------|
+| `count`     | Number of repetitions (expression or literal)    | required |
+| `var`       | 0-based iteration index variable name            | —       |
+| `direction` | Expansion direction: `DOWN` or `RIGHT`           | `DOWN`  |
+| `lastCell`  | Bottom-right cell of the area to repeat          | required |
+
 ## API
 
 ### Top-Level Functions
@@ -196,6 +211,17 @@ xlfill.FillBytes(templatePath string, data map[string]any, opts ...Option) ([]by
 
 // Fill from io.Reader, write to io.Writer
 xlfill.FillReader(template io.Reader, output io.Writer, data map[string]any, opts ...Option) error
+
+// Pre-compile a template for repeated fills (batch generation, API endpoints)
+compiled, err := xlfill.Compile("template.xlsx", opts...)
+compiled.Fill(data, "output.xlsx")       // reuse — no file I/O
+compiled.FillBytes(data)                  // returns []byte
+
+// Validate template data contract before processing
+issues, err := xlfill.ValidateData("template.xlsx", data)
+
+// Auto-detect optimal processing mode
+suggestion, err := xlfill.SuggestMode("template.xlsx", map[string]any{"itemCount": 50000})
 ```
 
 ### Filler (Advanced)
@@ -224,6 +250,13 @@ err := filler.Fill(data, "output.xlsx")
 | `WithRecalculateOnOpen(bool)` | Tell Excel to recalculate all formulas on open       |
 | `WithAreaListener(listener)`  | Add a before/after cell transform hook               |
 | `WithPreWrite(fn)`            | Callback before writing output                       |
+| `WithStreaming(bool)`         | **3x faster, 60% less memory** — streaming output    |
+| `WithParallelism(n)`          | Concurrent `jx:each` with N goroutines               |
+| `WithAutoMode(hint)`          | Auto-select optimal mode from template analysis      |
+| `WithContext(ctx)`             | `context.Context` for cancellation and timeouts      |
+| `WithProgressFunc(fn)`        | Progress callback with rows processed and timing     |
+| `WithStrictMode(bool)`        | Turn unknown command warnings into errors            |
+| `WithDebugWriter(w)`          | Structured trace output during processing            |
 
 ## Custom Commands
 
@@ -330,16 +363,15 @@ See the full [Debugging & Troubleshooting](https://javajack.github.io/xlfill/gui
 
 Benchmarked on Intel i5-9300H @ 2.40GHz:
 
-| Scenario | Rows | Time | Memory | Throughput |
-|----------|------|------|--------|------------|
-| Simple template | 100 | 5.3ms | 1.8 MB | ~19,000 rows/sec |
-| Simple template | 1,000 | 30ms | 9.4 MB | ~33,000 rows/sec |
-| Simple template | 10,000 | 279ms | 85.6 MB | ~35,800 rows/sec |
-| Nested loops (10×20) | 200 | 2.2ms | 872 KB | ~91,000 rows/sec |
-| Expression eval | 1 | 192ns | 48 B | ~5.2M evals/sec |
-| Comment parse | 1 | 4.0μs | 1 KB | ~250K parses/sec |
+| Scenario | Rows | Mode | Time | Memory | Throughput |
+|----------|------|------|------|--------|------------|
+| Simple template | 1,000 | Sequential | 27ms | 8.3 MB | ~37,000 rows/sec |
+| Simple template | 1,000 | **Streaming** | **8.9ms** | **3.3 MB** | **~112,000 rows/sec** |
+| Simple template | 10,000 | Sequential | 250ms | 75 MB | ~40,000 rows/sec |
+| Nested loops (10×20) | 200 | Sequential | 2.0ms | 810 KB | ~100,000 rows/sec |
+| Expression eval | 1 | — | 182ns | 48 B | ~5.5M evals/sec |
 
-Scaling is linear. Memory usage is ~8.6 KB/row at scale.
+Streaming mode: **3x faster, 60% less memory**. Enable with `WithStreaming(true)` or let `WithAutoMode` pick it automatically. See the full [Performance Tuning](https://javajack.github.io/xlfill/guides/performance-tuning/) guide.
 
 ## Documentation
 

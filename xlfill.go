@@ -34,7 +34,7 @@ func FillReader(template io.Reader, output io.Writer, data map[string]any, opts 
 func (f *Filler) Fill(data map[string]any, outputPath string) error {
 	out, err := os.Create(outputPath)
 	if err != nil {
-		return fmt.Errorf("create output file %q: %w", outputPath, err)
+		return NewRuntimeError(fmt.Sprintf("create output file %q", outputPath), err)
 	}
 	defer out.Close()
 
@@ -57,11 +57,63 @@ func (f *Filler) FillBytes(data map[string]any) ([]byte, error) {
 // FillWriter processes the template with data and writes to w.
 func (f *Filler) FillWriter(data map[string]any, w io.Writer) error {
 	// Open template
-	tx, err := f.openTemplate()
+	etx, err := f.openTemplate()
 	if err != nil {
 		return err
 	}
-	defer tx.Close()
+	defer etx.Close()
+
+	// Auto-mode: analyze template and select optimal strategy.
+	// Uses LOCAL variables to avoid mutating f.opts (safe for concurrent Filler reuse).
+	autoStreaming := f.opts.streaming
+	autoParallelism := f.opts.parallelism
+	if f.opts.autoMode {
+		suggestion, sugErr := f.suggestModeFromTransformer(etx, f.opts.autoModeHint)
+		if sugErr == nil {
+			switch suggestion.Mode {
+			case ModeStreaming:
+				autoStreaming = true
+				autoParallelism = 0
+			case ModeParallel:
+				autoStreaming = false
+				autoParallelism = suggestion.Parallelism
+			default:
+				autoStreaming = false
+				autoParallelism = 0
+			}
+		}
+		// On analysis error, fall through to sequential
+	}
+
+	// If auto-mode ran BuildAreas for analysis, reset target tracking
+	// to avoid duplicate entries when BuildAreas runs again below.
+	if f.opts.autoMode {
+		etx.ResetTargetCellRefs()
+	}
+
+	// Determine the active transformer based on options.
+	// Streaming and parallel are mutually exclusive; parallel takes precedence.
+	useStreaming := autoStreaming && autoParallelism <= 1
+	useParallel := autoParallelism > 1
+
+	var tx Transformer = etx
+	var stx *StreamingTransformer
+
+	if useStreaming {
+		sheets := etx.GetSheetNames()
+		if len(sheets) > 0 {
+			var serr error
+			stx, serr = NewStreamingTransformer(etx, sheets[0])
+			if serr != nil {
+				return fmt.Errorf("init streaming: %w", serr)
+			}
+			tx = stx
+		}
+	}
+
+	if useParallel {
+		tx = NewConcurrentTransformer(tx)
+	}
 
 	// Create context
 	ctxOpts := []ContextOption{}
@@ -76,6 +128,16 @@ func (f *Filler) FillWriter(data map[string]any, w io.Writer) error {
 		return err
 	}
 
+	// Propagate parallelism setting to areas
+	if useParallel {
+		propagateParallelism(areas, autoParallelism)
+	}
+
+	// Debug trace start
+	if f.debug != nil {
+		f.debug.TraceArea(areas[0], areas[0].StartCell)
+	}
+
 	// Process each area
 	for _, area := range areas {
 		if _, err := area.ApplyAt(area.StartCell, ctx); err != nil {
@@ -88,16 +150,21 @@ func (f *Filler) FillWriter(data map[string]any, w io.Writer) error {
 		}
 	}
 
+	// Debug trace done
+	if f.debug != nil {
+		f.debug.TraceDone()
+	}
+
 	// Recalculate formulas on open
 	if f.opts.recalculateOnOpen {
-		if err := tx.SetRecalculateOnOpen(true); err != nil {
+		if err := etx.SetRecalculateOnOpen(true); err != nil {
 			return fmt.Errorf("set recalculate on open: %w", err)
 		}
 	}
 
-	// Pre-write callback
+	// Pre-write callback (always gets the underlying ExcelizeTransformer)
 	if f.opts.preWrite != nil {
-		if err := f.opts.preWrite(tx); err != nil {
+		if err := f.opts.preWrite(etx); err != nil {
 			return fmt.Errorf("pre-write callback: %w", err)
 		}
 	}
@@ -106,19 +173,40 @@ func (f *Filler) FillWriter(data map[string]any, w io.Writer) error {
 	return tx.Write(w)
 }
 
+// propagateParallelism sets the parallelism field on all areas recursively.
+func propagateParallelism(areas []*Area, n int) {
+	for _, area := range areas {
+		area.parallelism = n
+		for _, b := range area.Bindings {
+			if childArea := getCommandArea(b.Command); childArea != nil {
+				propagateParallelism([]*Area{childArea}, n)
+			}
+		}
+	}
+}
+
+// ValidateData checks if the provided data satisfies the template's requirements.
+// It parses all expressions in the template and verifies that the data map contains
+// the required top-level keys. Returns validation issues for mismatches.
+func ValidateData(templatePath string, data map[string]any, opts ...Option) ([]ValidationIssue, error) {
+	allOpts := append([]Option{WithTemplate(templatePath)}, opts...)
+	filler := NewFiller(allOpts...)
+	return filler.ValidateData(data)
+}
+
 // openTemplate opens the template from file path or reader.
 func (f *Filler) openTemplate() (*ExcelizeTransformer, error) {
 	if f.opts.templateReader != nil {
 		file, err := excelize.OpenReader(f.opts.templateReader)
 		if err != nil {
-			return nil, fmt.Errorf("open template reader: %w", err)
+			return nil, NewRuntimeError("open template reader", err)
 		}
 		return NewExcelizeTransformer(file)
 	}
 	if f.opts.templatePath != "" {
 		return OpenTemplate(f.opts.templatePath)
 	}
-	return nil, fmt.Errorf("no template specified: use WithTemplate or WithTemplateReader")
+	return nil, NewRuntimeError("no template specified: use WithTemplate or WithTemplateReader", nil)
 }
 
 // clearTemplateCells clears cells that still contain unexpanded template expressions.

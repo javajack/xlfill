@@ -10,6 +10,8 @@ import (
 type Filler struct {
 	opts     *Options
 	registry *CommandRegistry
+	warnings *WarningCollector
+	debug    *DebugTracer
 }
 
 // NewFiller creates a Filler with the given options.
@@ -22,15 +24,26 @@ func NewFiller(opts ...Option) *Filler {
 	for name, factory := range o.customCommands {
 		reg.Register(name, factory)
 	}
-	return &Filler{opts: o, registry: reg}
+	f := &Filler{opts: o, registry: reg, warnings: &WarningCollector{}}
+	if o.debugWriter != nil {
+		f.debug = NewDebugTracer(o.debugWriter)
+	}
+	return f
+}
+
+// Warnings returns warnings collected during the last Fill or BuildAreas call.
+func (f *Filler) Warnings() []Warning {
+	return f.warnings.Warnings()
 }
 
 // BuildAreas parses all commented cells in the transformer and builds the Area/Command hierarchy.
 // It finds jx:area commands as root areas, then nests other commands within their containing area.
 func (f *Filler) BuildAreas(tx Transformer) ([]*Area, error) {
+	f.warnings.Reset()
+
 	commented := tx.GetCommentedCells()
 	if len(commented) == 0 {
-		return nil, fmt.Errorf("no commented cells found in template")
+		return nil, NewTemplateError(CellRef{}, "", "no commented cells found in template", nil)
 	}
 
 	type parsedCell struct {
@@ -75,7 +88,7 @@ func (f *Filler) BuildAreas(tx Transformer) ([]*Area, error) {
 			startRef := p.cellData.Ref
 			endRef, err := resolveLastCell(startRef, lastCell)
 			if err != nil {
-				return nil, fmt.Errorf("parse area lastCell %q: %w", lastCell, err)
+				return nil, NewTemplateError(startRef, "area", fmt.Sprintf("invalid lastCell %q", lastCell), err)
 			}
 
 			areaSize := Size{
@@ -84,12 +97,17 @@ func (f *Filler) BuildAreas(tx Transformer) ([]*Area, error) {
 			}
 
 			area := NewArea(startRef, areaSize, tx)
+			// Attach context/debug/progress/parallelism options
+			area.ctx = f.opts.ctx
+			area.debug = f.debug
+			area.progressFunc = f.opts.progressFunc
+			area.parallelism = f.opts.parallelism
 			rootAreas = append(rootAreas, area)
 		}
 	}
 
 	if len(rootAreas) == 0 {
-		return nil, fmt.Errorf("no jx:area commands found in template")
+		return nil, NewTemplateError(CellRef{}, "", "no jx:area commands found in template", nil)
 	}
 
 	// Collect all non-area commands with their parsed info
@@ -99,6 +117,7 @@ func (f *Filler) BuildAreas(tx Transformer) ([]*Area, error) {
 		size     Size
 	}
 	var allCommands []commandInfo
+	knownNames := f.registry.KnownNames()
 
 	for _, p := range parsed {
 		for _, cmd := range p.commands {
@@ -108,10 +127,17 @@ func (f *Filler) BuildAreas(tx Transformer) ([]*Area, error) {
 
 			command, err := f.registry.Create(cmd.Name, cmd.Attrs)
 			if err != nil {
-				return nil, fmt.Errorf("create command %q at %s: %w", cmd.Name, p.cellData.Ref, err)
+				return nil, NewTemplateError(p.cellData.Ref, cmd.Name, "create command failed", err)
 			}
 			if command == nil {
-				continue // unknown command, silently ignored
+				// Unknown command — handle based on strict mode
+				hint := suggestCommand(cmd.Name, knownNames)
+				msg := fmt.Sprintf("unknown command %q%s", cmd.Name, hint)
+				if f.opts.strictMode {
+					return nil, NewTemplateError(p.cellData.Ref, cmd.Name, msg, nil)
+				}
+				f.warnings.Add(p.cellData.Ref, msg)
+				continue
 			}
 
 			// Parse lastCell to determine command's area size
@@ -123,7 +149,7 @@ func (f *Filler) BuildAreas(tx Transformer) ([]*Area, error) {
 			cmdStartRef := p.cellData.Ref
 			cmdEndRef, err := resolveLastCell(cmdStartRef, lastCell)
 			if err != nil {
-				return nil, fmt.Errorf("parse command lastCell %q: %w", lastCell, err)
+				return nil, NewTemplateError(cmdStartRef, cmd.Name, fmt.Sprintf("invalid lastCell %q", lastCell), err)
 			}
 
 			cmdSize := Size{
@@ -133,6 +159,10 @@ func (f *Filler) BuildAreas(tx Transformer) ([]*Area, error) {
 
 			// Create the command's inner area and attach it
 			innerArea := NewArea(cmdStartRef, cmdSize, tx)
+			innerArea.ctx = f.opts.ctx
+			innerArea.debug = f.debug
+			innerArea.progressFunc = f.opts.progressFunc
+			innerArea.parallelism = f.opts.parallelism
 			attachArea(command, innerArea)
 
 			// Handle if command else area (from "areas" attribute)
@@ -141,7 +171,12 @@ func (f *Filler) BuildAreas(tx Transformer) ([]*Area, error) {
 				if len(cmd.Areas) >= 2 {
 					elseAreaRef := cmd.Areas[1]
 					elseSize := elseAreaRef.Size()
-					ifCmd.ElseArea = NewArea(elseAreaRef.First, elseSize, tx)
+					elseArea := NewArea(elseAreaRef.First, elseSize, tx)
+					elseArea.ctx = f.opts.ctx
+					elseArea.debug = f.debug
+					elseArea.progressFunc = f.opts.progressFunc
+					elseArea.parallelism = f.opts.parallelism
+					ifCmd.ElseArea = elseArea
 				} else if areasAttr := cmd.Attrs["areas"]; areasAttr != "" {
 					if err := f.buildIfElseArea(ifCmd, areasAttr, cmdStartRef, tx); err != nil {
 						return nil, err
@@ -230,6 +265,16 @@ func (f *Filler) BuildAreas(tx Transformer) ([]*Area, error) {
 		}
 	}
 
+	// Propagate style listeners
+	for _, l := range f.opts.areaListeners {
+		if _, ok := l.(StyleListener); ok {
+			for _, area := range rootAreas {
+				f.propagateStyleListeners(area)
+			}
+			break
+		}
+	}
+
 	return rootAreas, nil
 }
 
@@ -261,6 +306,37 @@ func (f *Filler) propagateListeners(area *Area) {
 			if c.Area != nil {
 				f.propagateListeners(c.Area)
 			}
+		case *RepeatCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		}
+	}
+}
+
+// propagateStyleListeners extracts StyleListeners from AreaListeners and sets them on areas.
+// Each listener is only added once: if it implements both AreaListener and StyleListener,
+// it's already in area.Listeners for Before/AfterTransformCell, and is added here
+// only for StyleCell — the two call sites in transformCell are separate.
+func (f *Filler) propagateStyleListeners(area *Area) {
+	for _, l := range f.opts.areaListeners {
+		if sl, ok := l.(StyleListener); ok {
+			// Deduplicate: don't add if already present
+			found := false
+			for _, existing := range area.StyleListeners {
+				if existing == sl {
+					found = true
+					break
+				}
+			}
+			if !found {
+				area.StyleListeners = append(area.StyleListeners, sl)
+			}
+		}
+	}
+	for _, b := range area.Bindings {
+		if childArea := getCommandArea(b.Command); childArea != nil {
+			f.propagateStyleListeners(childArea)
 		}
 	}
 }
@@ -277,6 +353,8 @@ func getCommandArea(cmd Command) *Area {
 	case *GridCommand:
 		return c.BodyArea
 	case *AutoRowHeightCommand:
+		return c.Area
+	case *RepeatCommand:
 		return c.Area
 	}
 	return nil
@@ -316,7 +394,7 @@ func (f *Filler) buildIfElseArea(ifCmd *IfCommand, areasAttr string, cmdStart Ce
 		// Try without sheet
 		areaRef, err = ParseAreaRef(elseRef)
 		if err != nil {
-			return fmt.Errorf("parse if else area %q: %w", elseRef, err)
+			return NewTemplateError(cmdStart, "if", fmt.Sprintf("invalid else area %q", elseRef), err)
 		}
 		if areaRef.First.Sheet == "" {
 			areaRef.First.Sheet = cmdStart.Sheet
@@ -325,7 +403,12 @@ func (f *Filler) buildIfElseArea(ifCmd *IfCommand, areasAttr string, cmdStart Ce
 	}
 
 	elseSize := areaRef.Size()
-	ifCmd.ElseArea = NewArea(areaRef.First, elseSize, tx)
+	elseArea := NewArea(areaRef.First, elseSize, tx)
+	elseArea.ctx = f.opts.ctx
+	elseArea.debug = f.debug
+	elseArea.progressFunc = f.opts.progressFunc
+	elseArea.parallelism = f.opts.parallelism
+	ifCmd.ElseArea = elseArea
 	return nil
 }
 
@@ -341,6 +424,8 @@ func attachArea(cmd Command, area *Area) {
 	case *GridCommand:
 		c.BodyArea = area
 	case *AutoRowHeightCommand:
+		c.Area = area
+	case *RepeatCommand:
 		c.Area = area
 	}
 }

@@ -68,6 +68,61 @@ func (l *AuditListener) AfterTransformCell(
 ) {}
 ```
 
+## StyleListener: conditional styling
+
+For conditional formatting based on cell values, implement `StyleListener`. It's called after each cell is transformed and lets you override style properties:
+
+```go
+type StyleListener interface {
+    StyleCell(target CellRef, value any, ctx *Context) *StyleOverride
+}
+
+type StyleOverride struct {
+    Bold      *bool
+    Italic    *bool
+    FontColor *string  // hex color e.g. "#FF0000"
+    FillColor *string  // hex background color
+    FontSize  *float64
+}
+```
+
+### Example: Red text for negative values
+
+```go
+type NegativeHighlighter struct{}
+
+func (l *NegativeHighlighter) BeforeTransformCell(
+    src, target xlfill.CellRef, ctx *xlfill.Context, tx xlfill.Transformer,
+) bool { return true }
+
+func (l *NegativeHighlighter) AfterTransformCell(
+    src, target xlfill.CellRef, ctx *xlfill.Context, tx xlfill.Transformer,
+) {}
+
+func (l *NegativeHighlighter) StyleCell(
+    target xlfill.CellRef, value any, ctx *xlfill.Context,
+) *xlfill.StyleOverride {
+    if f, ok := value.(float64); ok && f < 0 {
+        color := "FF0000"
+        bold := true
+        return &xlfill.StyleOverride{FontColor: &color, Bold: &bold}
+    }
+    return nil // no change
+}
+```
+
+Register it the same way as any listener:
+
+```go
+xlfill.Fill("template.xlsx", "output.xlsx", data,
+    xlfill.WithAreaListener(&NegativeHighlighter{}),
+)
+```
+
+A listener can implement both `AreaListener` and `StyleListener` — the two are independent call paths.
+
+**Thread safety note:** When used with `WithParallelism`, listeners are called from multiple goroutines. Use atomic operations or mutexes for any shared mutable state (counters, accumulators, etc.).
+
 ## PreWrite callback
 
 For logic that runs **after all template processing** but **before writing the output**, use `WithPreWrite`:

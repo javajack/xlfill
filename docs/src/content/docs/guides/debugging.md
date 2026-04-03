@@ -116,6 +116,71 @@ Sheet1!A1:C5 area (3x5)
           Sheet1!C5 if (1x1) condition="dept.ShowTotal"
 ```
 
+## Debug trace: see every step in real time
+
+For the deepest visibility into template processing, use `WithDebugWriter`. It produces a structured trace showing every area, command, iteration, and timing:
+
+```go
+var buf bytes.Buffer
+xlfill.Fill("template.xlsx", "output.xlsx", data,
+    xlfill.WithDebugWriter(&buf),
+)
+fmt.Print(buf.String())
+```
+
+Output:
+```
+[area] Sheet1!A1:C10 (3x10) -> target Sheet1!A1, 1 bindings
+  [each] 5 items, var="e", direction=DOWN
+    [iter 0] -> Sheet1!A2
+    [iter 1] -> Sheet1!A3
+    [iter 2] -> Sheet1!A4
+    [iter 3] -> Sheet1!A5
+    [iter 4] -> Sheet1!A6
+[done] 30 cells transformed, 12ms total
+```
+
+This tells you:
+- **Which areas** are being processed and their dimensions
+- **Which commands** fire and with what parameters
+- **Each loop iteration** and its target position
+- **Total cells** transformed and elapsed time
+
+For parallel processing, the trace shows `direction=DOWN (parallel)` and iterations may appear interleaved.
+
+Write to `os.Stderr` for real-time visibility during development:
+
+```go
+xlfill.Fill("template.xlsx", "output.xlsx", data,
+    xlfill.WithDebugWriter(os.Stderr),
+)
+```
+
+## Warnings: catch silent problems
+
+Previously, a typo like `jx:eache` was silently ignored — no error, no output, just confusion. Now XLFill catches these and reports them as warnings with "did you mean?" suggestions:
+
+```go
+filler := xlfill.NewFiller(xlfill.WithTemplate("template.xlsx"))
+filler.Fill(data, "output.xlsx")
+
+for _, w := range filler.Warnings() {
+    fmt.Println(w)
+}
+// [WARN] Sheet1!A5: unknown command "eache" (did you mean "each"?)
+```
+
+### Strict mode for CI
+
+Use `WithStrictMode(true)` to turn all warnings into hard errors — recommended for CI pipelines:
+
+```go
+err := xlfill.Fill("template.xlsx", "output.xlsx", data,
+    xlfill.WithStrictMode(true),
+)
+// Returns error on any warning
+```
+
 ## Error messages: reading the error chain
 
 When `Fill()` fails at runtime, the error message includes the full context chain. Here's how to read it:
@@ -135,6 +200,26 @@ Breaking this down:
 | `select filter "e.Active" at item 3` | The specific operation and iteration index |
 
 The **template cell** tells you where to look in your `.xlsx` file. The **target cell** tells you where in the output the failure occurred. The **item index** tells you which data record triggered the error.
+
+### Structured error types
+
+For programmatic error handling, all XLFill errors support `errors.As` with `XLFillError`:
+
+```go
+var xlErr *xlfill.XLFillError
+if errors.As(err, &xlErr) {
+    switch xlErr.Kind {
+    case xlfill.ErrTemplate:
+        // Template structure problem — fix the .xlsx
+    case xlfill.ErrData:
+        // Data/expression problem — fix the data map
+    case xlfill.ErrRuntime:
+        // I/O or system problem — retry or escalate
+    }
+}
+```
+
+See the [Error Handling guide](/xlfill/guides/error-handling/) for the full error handling story.
 
 ## AreaListener: trace every cell transformation
 
@@ -238,11 +323,14 @@ A formula like `=SUM(A2:A2)` doesn't expand to cover all generated rows.
 When something isn't working, go through this in order:
 
 1. **`Validate()`** — catches syntax errors, bad expressions, and bounds issues without needing data
-2. **`Describe()`** — shows the parsed template structure; verify it matches your intent
-3. **Check the error message** — read the full chain: area, command, template cell, target cell, iteration index
-4. **`AreaListener`** — trace cell-by-cell processing to find exactly where things go wrong
-5. **`PreWrite`** — inspect the final output state before it's written to file
-6. **Open the template** — sometimes the simplest fix is to open the `.xlsx` and check that comments are on the right cells
+2. **`ValidateData(template, data)`** — verifies your data map satisfies the template's expression requirements
+3. **`Describe()`** — shows the parsed template structure; verify it matches your intent
+4. **Check warnings** — `filler.Warnings()` shows unknown commands with "did you mean?" suggestions
+5. **`WithDebugWriter(os.Stderr)`** — see every area, command, iteration, and timing in real time
+6. **Check the error message** — use `errors.As(err, &xlErr)` to get the error kind (Template/Data/Runtime)
+7. **`AreaListener`** — trace cell-by-cell processing to find exactly where things go wrong
+8. **`PreWrite`** — inspect the final output state before it's written to file
+9. **Open the template** — sometimes the simplest fix is to open the `.xlsx` and check that comments are on the right cells
 
 ## What's next?
 

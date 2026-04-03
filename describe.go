@@ -174,6 +174,14 @@ func describeCommandAttrs(cmd Command) string {
 		parts = append(parts, fmt.Sprintf("updater=%q", c.Updater))
 	case *AutoRowHeightCommand:
 		// no extra attributes
+	case *RepeatCommand:
+		parts = append(parts, fmt.Sprintf("count=%q", c.Count))
+		if c.Var != "" {
+			parts = append(parts, fmt.Sprintf("var=%q", c.Var))
+		}
+		if c.Direction != "" && c.Direction != "DOWN" {
+			parts = append(parts, fmt.Sprintf("direction=%q", c.Direction))
+		}
 	}
 	if len(parts) == 0 {
 		return ""

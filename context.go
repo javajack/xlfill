@@ -16,9 +16,11 @@ type Context struct {
 	updateCellData bool
 	clearCells     bool
 
-	// Cached merged map for expression evaluation.
-	// Invalidated (set to nil) whenever runVars change.
-	cachedMap map[string]any
+	// Differential map caching: instead of rebuilding the merged map on every
+	// runVar change, we keep the map alive and apply in-place updates.
+	cachedMap    map[string]any
+	mapDirtyKeys map[string]struct{} // runVar keys that changed since last ToMap()
+	mapNeedsFull bool                // true when data changed (requires full rebuild)
 }
 
 // ContextOption configures a Context.
@@ -59,18 +61,37 @@ func NewContext(data map[string]any, opts ...ContextOption) *Context {
 		data = make(map[string]any)
 	}
 	c := &Context{
-		data:           data,
-		runVars:        make(map[string]any),
-		evaluator:      NewExpressionEvaluator(),
-		notationBegin:  "${",
-		notationEnd:    "}",
+		data:          data,
+		runVars:       make(map[string]any),
+		evaluator:     NewExpressionEvaluator(),
+		notationBegin: "${",
+		notationEnd:   "}",
 		updateCellData: true,
 		clearCells:     true,
+		mapDirtyKeys:  make(map[string]struct{}, 4),
+		mapNeedsFull:   true, // first ToMap() must do full build
 	}
 	for _, opt := range opts {
 		opt(c)
 	}
 	return c
+}
+
+// Clone creates an independent copy of the Context suitable for parallel processing.
+// The data map is shared (read-only), but runVars and the cached map are independent.
+// The evaluator is shared (its sync.Map cache is already thread-safe).
+func (c *Context) Clone() *Context {
+	return &Context{
+		data:           c.data, // shared read-only
+		runVars:        make(map[string]any),
+		evaluator:      c.evaluator, // thread-safe
+		notationBegin:  c.notationBegin,
+		notationEnd:    c.notationEnd,
+		updateCellData: c.updateCellData,
+		clearCells:     c.clearCells,
+		mapDirtyKeys:   make(map[string]struct{}, 4),
+		mapNeedsFull:   true,
+	}
 }
 
 // GetVar returns a variable value. Checks runVars first, then data.
@@ -84,13 +105,13 @@ func (c *Context) GetVar(name string) any {
 // PutVar sets a variable in the data map.
 func (c *Context) PutVar(name string, value any) {
 	c.data[name] = value
-	c.invalidateCache()
+	c.mapNeedsFull = true // data changed, need full rebuild
 }
 
 // RemoveVar removes a variable from the data map.
 func (c *Context) RemoveVar(name string) {
 	delete(c.data, name)
-	c.invalidateCache()
+	c.mapNeedsFull = true
 }
 
 // ContainsVar returns true if the variable exists in either runVars or data.
@@ -104,29 +125,48 @@ func (c *Context) ContainsVar(name string) bool {
 
 // ToMap returns a merged map of data and runVars. RunVars override data.
 // Built-in functions are always available.
-// The result is cached and reused until runVars are modified.
+// Uses differential updates: when only runVars change, the existing map is
+// updated in-place rather than rebuilt from scratch.
 func (c *Context) ToMap() map[string]any {
-	if c.cachedMap != nil {
+	if c.cachedMap != nil && !c.mapNeedsFull && len(c.mapDirtyKeys) == 0 {
 		return c.cachedMap
 	}
-	m := make(map[string]any, len(c.data)+len(c.runVars)+2)
-	for k, v := range c.data {
-		m[k] = v
-	}
-	for k, v := range c.runVars {
-		m[k] = v
-	}
-	// Built-in functions
-	if _, ok := m["hyperlink"]; !ok {
-		m["hyperlink"] = Hyperlink
-	}
-	c.cachedMap = m
-	return m
-}
 
-// invalidateCache clears the cached merged map.
-func (c *Context) invalidateCache() {
-	c.cachedMap = nil
+	if c.cachedMap == nil || c.mapNeedsFull {
+		// Full rebuild
+		m := make(map[string]any, len(c.data)+len(c.runVars)+2)
+		for k, v := range c.data {
+			m[k] = v
+		}
+		for k, v := range c.runVars {
+			m[k] = v
+		}
+		if _, ok := m["hyperlink"]; !ok {
+			m["hyperlink"] = Hyperlink
+		}
+		c.cachedMap = m
+		c.mapNeedsFull = false
+		clear(c.mapDirtyKeys)
+		return m
+	}
+
+	// Differential update: only apply changed runVars (deduplicated via map keys)
+	for key := range c.mapDirtyKeys {
+		if val, ok := c.runVars[key]; ok {
+			c.cachedMap[key] = val
+		} else {
+			// Key was removed from runVars — restore from data, builtin, or delete
+			if val, ok := c.data[key]; ok {
+				c.cachedMap[key] = val
+			} else if key == "hyperlink" {
+				c.cachedMap[key] = Hyperlink
+			} else {
+				delete(c.cachedMap, key)
+			}
+		}
+	}
+	clear(c.mapDirtyKeys)
+	return c.cachedMap
 }
 
 // Evaluate evaluates an expression string using the merged data.
@@ -209,15 +249,16 @@ func inferCellType(v any) CellType {
 }
 
 // setRunVar sets a run variable (loop iteration variable).
+// Uses differential cache update instead of full invalidation.
 func (c *Context) setRunVar(name string, value any) {
 	c.runVars[name] = value
-	c.invalidateCache()
+	c.mapDirtyKeys[name] = struct{}{}
 }
 
 // removeRunVar removes a run variable.
 func (c *Context) removeRunVar(name string) {
 	delete(c.runVars, name)
-	c.invalidateCache()
+	c.mapDirtyKeys[name] = struct{}{}
 }
 
 // RunVar manages scoped loop variables with automatic save/restore.

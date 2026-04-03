@@ -1,6 +1,12 @@
 package xlfill
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"sync/atomic"
+
+	"github.com/xuri/excelize/v2"
+)
 
 // CommandBinding binds a Command to the area it operates on within a parent area.
 type CommandBinding struct {
@@ -11,11 +17,19 @@ type CommandBinding struct {
 
 // Area represents a rectangular region in a worksheet that can be processed.
 type Area struct {
-	StartCell   CellRef
-	AreaSize    Size
-	Bindings    []*CommandBinding
-	Transformer Transformer
-	Listeners   []AreaListener
+	StartCell      CellRef
+	AreaSize       Size
+	Bindings       []*CommandBinding
+	Transformer    Transformer
+	Listeners      []AreaListener
+	StyleListeners []StyleListener
+
+	// Enhancement fields
+	ctx           context.Context
+	debug         *DebugTracer
+	progressFunc  ProgressFunc
+	rowsProcessed atomic.Int64
+	parallelism   int
 }
 
 // NewArea creates a new Area.
@@ -43,6 +57,17 @@ func (a *Area) ApplyAt(targetCell CellRef, ctx *Context) (Size, error) {
 		return ZeroSize, fmt.Errorf("area has no transformer")
 	}
 
+	// Check for cancellation
+	if err := a.checkCancelled(); err != nil {
+		return ZeroSize, err
+	}
+
+	if a.debug != nil {
+		a.debug.TraceArea(a, targetCell)
+		a.debug.Indent()
+		defer a.debug.Dedent()
+	}
+
 	// If no commands, just transform all cells (static area)
 	if len(a.Bindings) == 0 {
 		return a.transformStaticArea(targetCell, ctx)
@@ -55,13 +80,17 @@ func (a *Area) ApplyAt(targetCell CellRef, ctx *Context) (Size, error) {
 // transformStaticArea transforms all cells in the area without any command processing.
 func (a *Area) transformStaticArea(targetCell CellRef, ctx *Context) (Size, error) {
 	for row := 0; row < a.AreaSize.Height; row++ {
+		if err := a.checkCancelled(); err != nil {
+			return ZeroSize, err
+		}
 		for col := 0; col < a.AreaSize.Width; col++ {
 			srcRef := NewCellRef(a.StartCell.Sheet, a.StartCell.Row+row, a.StartCell.Col+col)
 			dstRef := NewCellRef(targetCell.Sheet, targetCell.Row+row, targetCell.Col+col)
 			if err := a.transformCell(srcRef, dstRef, ctx); err != nil {
-				return ZeroSize, fmt.Errorf("transform cell %s → %s: %w", srcRef, dstRef, err)
+				return ZeroSize, fmt.Errorf("transform cell %s -> %s: %w", srcRef, dstRef, err)
 			}
 		}
+		a.reportProgress(targetCell.Sheet)
 	}
 	return a.AreaSize, nil
 }
@@ -91,7 +120,96 @@ func (a *Area) transformCell(src, target CellRef, ctx *Context) error {
 	for _, l := range a.Listeners {
 		l.AfterTransformCell(src, target, ctx, a.Transformer)
 	}
+
+	// Fire style listeners
+	if len(a.StyleListeners) > 0 {
+		a.applyStyleOverrides(target, ctx)
+	}
+
 	return nil
+}
+
+// applyStyleOverrides invokes style listeners and applies any returned overrides.
+func (a *Area) applyStyleOverrides(target CellRef, ctx *Context) {
+	cd := a.Transformer.GetCellData(target)
+	var value any
+	if cd != nil {
+		value = cd.EvalResult
+		if value == nil {
+			value = cd.Value
+		}
+	}
+	for _, sl := range a.StyleListeners {
+		override := sl.StyleCell(target, value, ctx)
+		if override != nil {
+			applyStyleToCell(a.Transformer, target, override)
+		}
+	}
+}
+
+// applyStyleToCell applies a StyleOverride to a cell via the Transformer.
+// It creates a new style with the requested overrides. Note that excelize
+// styles are immutable IDs — "merging" requires creating a brand new style.
+// For full style control, use tx.(*ExcelizeTransformer).File() directly.
+func applyStyleToCell(tx Transformer, ref CellRef, style *StyleOverride) {
+	// If the transformer is concurrency-wrapped, acquire its lock for
+	// thread-safe excelize style operations.
+	if ct, ok := tx.(*ConcurrentTransformer); ok {
+		ct.mu.Lock()
+		defer ct.mu.Unlock()
+	}
+
+	etx := unwrapExcelizeTransformer(tx)
+	if etx == nil {
+		return
+	}
+
+	cell := ref.CellName()
+	f := etx.File()
+
+	s := &excelize.Style{}
+	hasChange := false
+
+	if style.Bold != nil || style.Italic != nil || style.FontColor != nil || style.FontSize != nil {
+		font := &excelize.Font{}
+		if style.Bold != nil {
+			font.Bold = *style.Bold
+			hasChange = true
+		}
+		if style.Italic != nil {
+			font.Italic = *style.Italic
+			hasChange = true
+		}
+		if style.FontColor != nil {
+			font.Color = *style.FontColor
+			hasChange = true
+		}
+		if style.FontSize != nil {
+			font.Size = *style.FontSize
+			hasChange = true
+		}
+		s.Font = font
+	}
+
+	if style.FillColor != nil {
+		s.Fill = excelize.Fill{
+			Type:    "pattern",
+			Color:   []string{*style.FillColor},
+			Pattern: 1,
+		}
+		hasChange = true
+	}
+
+	if !hasChange {
+		return
+	}
+
+	newStyleID, err := f.NewStyle(s)
+	if err != nil {
+		// Style creation failed — leave cell unchanged rather than corrupt it
+		return
+	}
+	f.SetCellStyle(ref.Sheet, cell, cell, newStyleID)
 }
 
 // processWithCommands processes the area, executing commands and transforming static cells.
@@ -105,6 +223,10 @@ func (a *Area) processWithCommands(targetCell CellRef, ctx *Context) (Size, erro
 	prevCmdEndRow := a.StartCell.Row // tracks where we are in source
 
 	for _, binding := range a.Bindings {
+		if err := a.checkCancelled(); err != nil {
+			return ZeroSize, err
+		}
+
 		cmdSrcStartRow := binding.StartRef.Row
 
 		// Transform static rows between previous command end and this command start
@@ -128,7 +250,19 @@ func (a *Area) processWithCommands(targetCell CellRef, ctx *Context) (Size, erro
 
 		// Execute command
 		cmdTarget := NewCellRef(targetCell.Sheet, currentTargetRow, targetCell.Col+cmdColStart)
+
+		if a.debug != nil {
+			attrs := describeCommandAttrs(binding.Command)
+			a.debug.TraceCommand(binding.Command, cmdTarget, attrs)
+			a.debug.Indent()
+		}
+
 		cmdSize, err := binding.Command.ApplyAt(cmdTarget, ctx, a.Transformer)
+
+		if a.debug != nil {
+			a.debug.Dedent()
+		}
+
 		if err != nil {
 			return ZeroSize, fmt.Errorf("command %s (template %s) at target %s: %w", binding.Command.Name(), binding.StartRef, cmdTarget, err)
 		}
@@ -171,6 +305,9 @@ type colExclusion struct {
 // transformRows transforms rows from the source area to target, optionally excluding a column range.
 func (a *Area) transformRows(srcStartRow, rowCount int, targetSheet string, targetStartRow, targetStartCol int, ctx *Context, exclude *colExclusion) error {
 	for row := 0; row < rowCount; row++ {
+		if err := a.checkCancelled(); err != nil {
+			return err
+		}
 		srcRow := srcStartRow + row
 		for col := 0; col < a.AreaSize.Width; col++ {
 			if exclude != nil && col >= exclude.start && col < exclude.end {
@@ -182,8 +319,49 @@ func (a *Area) transformRows(srcStartRow, rowCount int, targetSheet string, targ
 				return err
 			}
 		}
+		a.reportProgress(targetSheet)
 	}
 	return nil
+}
+
+// checkCancelled checks if the context has been cancelled.
+func (a *Area) checkCancelled() error {
+	if a.ctx == nil {
+		return nil
+	}
+	select {
+	case <-a.ctx.Done():
+		return a.ctx.Err()
+	default:
+		return nil
+	}
+}
+
+// reportProgress calls the progress function if set. Safe for concurrent use.
+func (a *Area) reportProgress(sheet string) {
+	if a.progressFunc == nil {
+		return
+	}
+	count := a.rowsProcessed.Add(1)
+	a.progressFunc(FillProgress{
+		ProcessedRows: int(count),
+		CurrentSheet:  sheet,
+	})
+}
+
+// unwrapExcelizeTransformer extracts the underlying *ExcelizeTransformer from
+// any wrapper (ConcurrentTransformer, StreamingTransformer, or direct).
+func unwrapExcelizeTransformer(tx Transformer) *ExcelizeTransformer {
+	switch t := tx.(type) {
+	case *ExcelizeTransformer:
+		return t
+	case *ConcurrentTransformer:
+		return unwrapExcelizeTransformer(t.inner)
+	case *StreamingTransformer:
+		return t.reader
+	default:
+		return nil
+	}
 }
 
 // ClearCells clears all template cells in this area.
