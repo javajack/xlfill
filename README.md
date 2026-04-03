@@ -403,7 +403,7 @@ Then use in templates: `jx:highlight(color="yellow" lastCell="C1")`
 
 ## Built-in Functions
 
-XLFill ships with 16 built-in functions available in all `${...}` expressions:
+XLFill ships with 18 built-in functions available in all `${...}` expressions:
 
 | Function | Example | Description |
 |----------|---------|-------------|

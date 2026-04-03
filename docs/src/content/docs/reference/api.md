@@ -523,7 +523,7 @@ xlfill.Fill("template.xlsx", "output.xlsx", data)
 
 ## Built-in functions
 
-XLFill includes 16 built-in functions available in all `${...}` expressions. See the full [Built-in Functions guide](/xlfill/guides/built-in-functions/) for examples.
+XLFill includes 18 built-in functions available in all `${...}` expressions. See the full [Built-in Functions guide](/xlfill/guides/built-in-functions/) for examples.
 
 | Function | Description |
 |----------|-------------|

@@ -112,8 +112,11 @@ func (ct *CompiledTemplate) FillWriter(data map[string]any, w io.Writer) error {
 	filler.opts.customFunctions = ct.opts.customFunctions
 	filler.opts.i18nBundle = ct.opts.i18nBundle
 	filler.opts.docProperties = ct.opts.docProperties
-	filler.opts.streamingSheets = ct.opts.streamingSheets
-	// Defensive copy of areaListeners slice so concurrent fills don't share state
+	// Defensive copy of slices so concurrent fills don't share state
+	if len(ct.opts.streamingSheets) > 0 {
+		filler.opts.streamingSheets = make([]string, len(ct.opts.streamingSheets))
+		copy(filler.opts.streamingSheets, ct.opts.streamingSheets)
+	}
 	if len(ct.opts.areaListeners) > 0 {
 		filler.opts.areaListeners = make([]AreaListener, len(ct.opts.areaListeners))
 		copy(filler.opts.areaListeners, ct.opts.areaListeners)

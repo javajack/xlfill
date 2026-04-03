@@ -87,7 +87,7 @@ Every layout feature in XLFill is a zero-code template command. In EPPlus, XlsxW
 | i18n/translations | **Built-in (t())** | No | N/A | N/A | N/A |
 | Custom functions | **WithFunction** | Custom | N/A | N/A | N/A |
 
-16 built-in functions cover the most common expression needs. Custom functions are a single `WithFunction` call.
+18 built-in functions cover the most common expression needs. Custom functions are a single `WithFunction` call.
 
 ### Performance and scaling
 

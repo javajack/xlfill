@@ -1,9 +1,9 @@
 ---
 title: Built-in Functions
-description: All 16 built-in functions available in XLFill expressions — text, formatting, aggregation, and i18n.
+description: All 18 built-in functions available in XLFill expressions — text, formatting, aggregation, and i18n.
 ---
 
-XLFill includes 16 built-in functions that you can use directly in `${...}` expressions. No registration needed — they're available in every template.
+XLFill includes 18 built-in functions that you can use directly in `${...}` expressions. No registration needed — they're available in every template.
 
 ## Text functions
 
