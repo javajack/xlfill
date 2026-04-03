@@ -234,6 +234,33 @@ export default defineConfig({
           ],
         },
         {
+          label: "Patterns",
+          items: [
+            { label: "Excel Export APIs", slug: "guides/excel-export-api" },
+            { label: "Batch Generation", slug: "guides/batch-generation" },
+            { label: "Charts & Dashboards", slug: "guides/charts-and-dashboards" },
+            { label: "Data Validation & Forms", slug: "guides/data-validation-forms" },
+            { label: "Nested Reports", slug: "guides/nested-reports" },
+            { label: "Testing Templates", slug: "guides/testing-templates" },
+          ],
+        },
+        {
+          label: "Use Cases",
+          items: [
+            { label: "Invoice Generation", slug: "use-cases/invoices" },
+            { label: "Financial Reports", slug: "use-cases/financial-reports" },
+            { label: "Data Exports", slug: "use-cases/data-exports" },
+          ],
+        },
+        {
+          label: "Migration & Comparison",
+          items: [
+            { label: "Go Excel Libraries Compared", slug: "guides/excel-libraries-compared" },
+            { label: "Migrating from JXLS", slug: "guides/migrating-from-jxls" },
+            { label: "Coming from Python", slug: "guides/coming-from-python" },
+          ],
+        },
+        {
           label: "Advanced",
           items: [
             { label: "Built-in Functions", slug: "guides/built-in-functions" },

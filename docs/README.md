@@ -44,6 +44,20 @@ All commands are run from the root of the project, from a terminal:
 | `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
 | `npm run astro -- --help` | Get help using the Astro CLI                     |
 
+## Coming from...
+
+| Background | Start here |
+|:-----------|:-----------|
+| **JXLS (Java)** | [Migrating from JXLS](src/content/docs/guides/migrating-from-jxls.md) — same `jx:` syntax, 12 more commands |
+| **Python (openpyxl/XlsxWriter)** | [XLFill for Python Developers](src/content/docs/guides/coming-from-python.md) — template-first vs code-first |
+| **Choosing a Go library** | [Go Excel Libraries Compared](src/content/docs/guides/excel-libraries-compared.md) — excelize, tealeg, go-xlsx-templater, XLFill |
+
+## Use cases
+
+- [Invoice Generation](src/content/docs/use-cases/invoices.md) — line items, tax, logos, batch generation
+- [Financial Reports](src/content/docs/use-cases/financial-reports.md) — P&L, charts, grouping, conditional formatting
+- [Data Exports](src/content/docs/use-cases/data-exports.md) — database to Excel with auto-filter tables
+
 ## 👀 Want to learn more?
 
 Check out [Starlight’s docs](https://starlight.astro.build/), read [the Astro documentation](https://docs.astro.build), or jump into the [Astro Discord server](https://astro.build/chat).
