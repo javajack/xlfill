@@ -21,6 +21,15 @@ type Context struct {
 	cachedMap    map[string]any
 	mapDirtyKeys map[string]struct{} // runVar keys that changed since last ToMap()
 	mapNeedsFull bool                // true when data changed (requires full rebuild)
+
+	// Deferred actions registered during command processing.
+	deferred *DeferredRegistry
+
+	// Custom template functions (from WithFunction API).
+	customFunctions map[string]any
+
+	// i18n resource bundle for translations.
+	i18nBundle map[string]string
 }
 
 // ContextOption configures a Context.
@@ -55,21 +64,36 @@ func WithClearCells(enabled bool) ContextOption {
 	}
 }
 
+// WithCustomFunctions sets custom template functions on the context.
+func WithCustomFunctions(fns map[string]any) ContextOption {
+	return func(c *Context) {
+		c.customFunctions = fns
+	}
+}
+
+// WithI18nBundle sets the i18n resource bundle for the t() template function.
+func WithI18nBundle(bundle map[string]string) ContextOption {
+	return func(c *Context) {
+		c.i18nBundle = bundle
+	}
+}
+
 // NewContext creates a new Context with the given data and options.
 func NewContext(data map[string]any, opts ...ContextOption) *Context {
 	if data == nil {
 		data = make(map[string]any)
 	}
 	c := &Context{
-		data:          data,
-		runVars:       make(map[string]any),
-		evaluator:     NewExpressionEvaluator(),
-		notationBegin: "${",
-		notationEnd:   "}",
+		data:           data,
+		runVars:        make(map[string]any),
+		evaluator:      NewExpressionEvaluator(),
+		notationBegin:  "${",
+		notationEnd:    "}",
 		updateCellData: true,
 		clearCells:     true,
-		mapDirtyKeys:  make(map[string]struct{}, 4),
+		mapDirtyKeys:   make(map[string]struct{}, 4),
 		mapNeedsFull:   true, // first ToMap() must do full build
+		deferred:       NewDeferredRegistry(),
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -77,20 +101,34 @@ func NewContext(data map[string]any, opts ...ContextOption) *Context {
 	return c
 }
 
+// RegisterDeferred registers a deferred action to be executed after all areas are processed.
+func (c *Context) RegisterDeferred(action DeferredAction) {
+	c.deferred.Add(action)
+}
+
+// Deferred returns the deferred registry for this context.
+func (c *Context) Deferred() *DeferredRegistry {
+	return c.deferred
+}
+
 // Clone creates an independent copy of the Context suitable for parallel processing.
 // The data map is shared (read-only), but runVars and the cached map are independent.
 // The evaluator is shared (its sync.Map cache is already thread-safe).
+// The deferred registry is shared (it is thread-safe via mutex).
 func (c *Context) Clone() *Context {
 	return &Context{
-		data:           c.data, // shared read-only
-		runVars:        make(map[string]any),
-		evaluator:      c.evaluator, // thread-safe
-		notationBegin:  c.notationBegin,
-		notationEnd:    c.notationEnd,
-		updateCellData: c.updateCellData,
-		clearCells:     c.clearCells,
-		mapDirtyKeys:   make(map[string]struct{}, 4),
-		mapNeedsFull:   true,
+		data:            c.data, // shared read-only
+		runVars:         make(map[string]any),
+		evaluator:       c.evaluator, // thread-safe
+		notationBegin:   c.notationBegin,
+		notationEnd:     c.notationEnd,
+		updateCellData:  c.updateCellData,
+		clearCells:      c.clearCells,
+		mapDirtyKeys:    make(map[string]struct{}, 4),
+		mapNeedsFull:    true,
+		deferred:        c.deferred,        // shared, thread-safe
+		customFunctions: c.customFunctions,  // shared read-only
+		i18nBundle:      c.i18nBundle,       // shared read-only
 	}
 }
 
@@ -134,15 +172,26 @@ func (c *Context) ToMap() map[string]any {
 
 	if c.cachedMap == nil || c.mapNeedsFull {
 		// Full rebuild
-		m := make(map[string]any, len(c.data)+len(c.runVars)+2)
+		m := make(map[string]any, len(c.data)+len(c.runVars)+16)
 		for k, v := range c.data {
 			m[k] = v
 		}
 		for k, v := range c.runVars {
 			m[k] = v
 		}
+		// Register built-in functions (user data takes precedence)
 		if _, ok := m["hyperlink"]; !ok {
 			m["hyperlink"] = Hyperlink
+		}
+		if _, ok := m["comment"]; !ok {
+			m["comment"] = Comment
+		}
+		registerBuiltins(m, c.i18nBundle)
+		// Merge custom functions (user-provided via WithFunction)
+		for k, v := range c.customFunctions {
+			if _, ok := m[k]; !ok {
+				m[k] = v
+			}
 		}
 		c.cachedMap = m
 		c.mapNeedsFull = false
@@ -155,11 +204,17 @@ func (c *Context) ToMap() map[string]any {
 		if val, ok := c.runVars[key]; ok {
 			c.cachedMap[key] = val
 		} else {
-			// Key was removed from runVars — restore from data, builtin, or delete
+			// Key was removed from runVars — restore from data, builtin, custom, or delete
 			if val, ok := c.data[key]; ok {
 				c.cachedMap[key] = val
 			} else if key == "hyperlink" {
 				c.cachedMap[key] = Hyperlink
+			} else if key == "comment" {
+				c.cachedMap[key] = Comment
+			} else if fn, ok := c.customFunctions[key]; ok {
+				c.cachedMap[key] = fn
+			} else if restoreBuiltin(c.cachedMap, key, c.i18nBundle) {
+				// restored by restoreBuiltin
 			} else {
 				delete(c.cachedMap, key)
 			}

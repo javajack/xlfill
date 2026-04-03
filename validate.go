@@ -153,6 +153,54 @@ func collectCommandVars(areas []*Area, vars map[string]CellRef) {
 				if cmd.Area != nil {
 					collectCommandVars([]*Area{cmd.Area}, vars)
 				}
+			case *DataValidationCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
+			case *TableCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
+			case *ConditionalFormatCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
+			case *GroupCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
+			case *ChartCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
+			case *DefinedNameCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
+			case *SparklineCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
+			case *PageBreakCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
+			case *AutoColWidthCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
+			case *FreezePanesCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
+			case *ProtectCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
+			case *IncludeCommand:
+				if cmd.Area != nil {
+					collectCommandVars([]*Area{cmd.Area}, vars)
+				}
 			}
 		}
 	}
@@ -400,6 +448,54 @@ func (f *Filler) validateCommandAttributes(areas []*Area) []ValidationIssue {
 				}
 			case *RepeatCommand:
 				if issue := compileCheck(b.StartRef, "repeat", "count", cmd.Count); issue != nil {
+					issues = append(issues, *issue)
+				}
+			case *DataValidationCommand:
+				if issue := compileCheck(b.StartRef, "dataValidation", "type", cmd.ValidationType); issue != nil {
+					issues = append(issues, *issue)
+				}
+			case *TableCommand:
+				if issue := compileCheck(b.StartRef, "table", "name", cmd.TableName); issue != nil {
+					issues = append(issues, *issue)
+				}
+			case *ChartCommand:
+				if issue := compileCheck(b.StartRef, "chart", "type", cmd.ChartType); issue != nil {
+					issues = append(issues, *issue)
+				}
+				if issue := compileCheck(b.StartRef, "chart", "series", cmd.Series); issue != nil {
+					issues = append(issues, *issue)
+				}
+				if issue := compileCheck(b.StartRef, "chart", "categories", cmd.Categories); issue != nil {
+					issues = append(issues, *issue)
+				}
+			case *ConditionalFormatCommand:
+				if issue := compileCheck(b.StartRef, "conditionalFormat", "type", cmd.FormatType); issue != nil {
+					issues = append(issues, *issue)
+				}
+			case *DefinedNameCommand:
+				if issue := compileCheck(b.StartRef, "definedName", "name", cmd.DefinedNameValue); issue != nil {
+					issues = append(issues, *issue)
+				}
+			case *SparklineCommand:
+				if issue := compileCheck(b.StartRef, "sparkline", "data", cmd.DataRange); issue != nil {
+					issues = append(issues, *issue)
+				}
+			case *FreezePanesCommand:
+				if cmd.FreezeRow != "" {
+					if issue := compileCheck(b.StartRef, "freezePanes", "row", cmd.FreezeRow); issue != nil {
+						issues = append(issues, *issue)
+					}
+				}
+				if cmd.FreezeCol != "" {
+					if issue := compileCheck(b.StartRef, "freezePanes", "col", cmd.FreezeCol); issue != nil {
+						issues = append(issues, *issue)
+					}
+				}
+			case *IncludeCommand:
+				if issue := compileCheck(b.StartRef, "include", "template", cmd.TemplatePath); issue != nil {
+					issues = append(issues, *issue)
+				}
+				if issue := compileCheck(b.StartRef, "include", "area", cmd.SourceArea); issue != nil {
 					issues = append(issues, *issue)
 				}
 			}

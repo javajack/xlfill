@@ -77,19 +77,25 @@ func (f *Filler) SuggestMode(dataHint map[string]any) (*ModeSuggestion, error) {
 
 // templateAnalysis holds structural properties extracted from a parsed template.
 type templateAnalysis struct {
-	hasFormulas     bool
-	hasImages       bool
-	hasHyperlinks   bool
-	hasMergeCells   bool
-	hasMultiSheet   bool
-	hasNestedEach   bool
-	hasRepeat       bool
-	hasDirectionRight bool
-	eachCount       int  // number of jx:each commands
-	maxEachDepth    int  // deepest nesting level of each commands
-	isFixedHeight   bool // all each areas have fixed output height
-	sheetCount      int
-	estimatedCols   int  // max column width across areas
+	hasFormulas          bool
+	hasImages            bool
+	hasHyperlinks        bool
+	hasMergeCells        bool
+	hasMultiSheet        bool
+	hasNestedEach        bool
+	hasRepeat            bool
+	hasDirectionRight    bool
+	hasDataValidation    bool
+	hasTable             bool
+	hasConditionalFormat bool
+	hasChart             bool
+	hasSparkline         bool
+	hasInclude           bool
+	eachCount            int  // number of jx:each commands
+	maxEachDepth         int  // deepest nesting level of each commands
+	isFixedHeight        bool // all each areas have fixed output height
+	sheetCount           int
+	estimatedCols        int  // max column width across areas
 }
 
 // analyzeTemplate walks the parsed area tree and extracts structural properties.
@@ -153,6 +159,44 @@ func analyzeArea(area *Area, a *templateAnalysis, depth int) {
 			a.hasImages = true
 		case *MergeCellsCommand:
 			a.hasMergeCells = true
+		case *DataValidationCommand:
+			a.hasDataValidation = true
+			if cmd.Area != nil {
+				analyzeArea(cmd.Area, a, depth)
+			}
+		case *TableCommand:
+			a.hasTable = true
+			if cmd.Area != nil {
+				analyzeArea(cmd.Area, a, depth)
+			}
+		case *ConditionalFormatCommand:
+			a.hasConditionalFormat = true
+			if cmd.Area != nil {
+				analyzeArea(cmd.Area, a, depth)
+			}
+		case *GroupCommand:
+			if cmd.Area != nil {
+				analyzeArea(cmd.Area, a, depth)
+			}
+		case *ChartCommand:
+			a.hasChart = true
+			if cmd.Area != nil {
+				analyzeArea(cmd.Area, a, depth)
+			}
+		case *DefinedNameCommand:
+			if cmd.Area != nil {
+				analyzeArea(cmd.Area, a, depth)
+			}
+		case *SparklineCommand:
+			a.hasSparkline = true
+			if cmd.Area != nil {
+				analyzeArea(cmd.Area, a, depth)
+			}
+		case *IncludeCommand:
+			a.hasInclude = true
+			if cmd.Area != nil {
+				analyzeArea(cmd.Area, a, depth)
+			}
 		case *IfCommand:
 			if cmd.IfArea != nil {
 				analyzeArea(cmd.IfArea, a, depth)
@@ -220,6 +264,22 @@ func decideBestMode(a *templateAnalysis, itemCount int) *ModeSuggestion {
 	if a.hasDirectionRight {
 		streamingOK = false
 		streamingBlockers = append(streamingBlockers, "template has direction=RIGHT (streaming requires row-sequential writes)")
+	}
+	if a.hasDataValidation {
+		streamingOK = false
+		streamingBlockers = append(streamingBlockers, "template has data validation (requires deferred processing)")
+	}
+	if a.hasTable {
+		streamingOK = false
+		streamingBlockers = append(streamingBlockers, "template has tables (requires post-processing)")
+	}
+	if a.hasChart {
+		streamingOK = false
+		streamingBlockers = append(streamingBlockers, "template has charts (requires deferred processing)")
+	}
+	if a.hasSparkline {
+		streamingOK = false
+		streamingBlockers = append(streamingBlockers, "template has sparklines (requires deferred processing)")
 	}
 
 	// Check parallel eligibility

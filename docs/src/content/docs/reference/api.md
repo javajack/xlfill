@@ -143,6 +143,27 @@ s, _ := xlfill.SuggestMode("template.xlsx", map[string]any{"itemCount": 50000})
 fmt.Println(s.Mode, s.Reasons) // "streaming" ["large dataset (>=10K items)", ...]
 ```
 
+### HTTPHandler
+
+```go
+func HTTPHandler(templatePath string, dataFunc func(r *http.Request) (map[string]any, error), opts ...Option) http.Handler
+```
+
+Serve Excel reports directly from an HTTP endpoint. The `dataFunc` extracts data from the request (query params, database lookup, etc.) and XLFill generates the .xlsx response with correct content headers.
+
+```go
+http.Handle("/report", xlfill.HTTPHandler("template.xlsx",
+    func(r *http.Request) (map[string]any, error) {
+        dept := r.URL.Query().Get("dept")
+        employees, err := db.GetEmployeesByDept(dept)
+        return map[string]any{"employees": employees}, err
+    },
+    xlfill.WithStreaming(true),
+))
+```
+
+One handler, no temp files, no manual `Content-Type` headers. The response streams directly to the client.
+
 ## Filler (advanced)
 
 For repeated fills or fine-grained control, create a `Filler`:
@@ -210,11 +231,25 @@ All options work with both the top-level functions and `NewFiller`.
 | `WithStrictMode(bool)` | Turn unknown command warnings into errors. [Details &rarr;](/xlfill/guides/error-handling/) |
 | `WithDebugWriter(w io.Writer)` | Structured trace output during processing. [Details &rarr;](/xlfill/guides/debugging/) |
 
+### Selective streaming
+
+| Option | Description |
+|--------|-------------|
+| `WithStreamingSheets(sheets...)` | Enable streaming only for specific sheets (by name). Other sheets use sequential mode. |
+
+### Document metadata
+
+| Option | Description |
+|--------|-------------|
+| `WithDocumentProperties(props)` | Set workbook properties (title, author, subject, description, etc.) |
+
 ### Extensibility
 
 | Option | Description |
 |--------|-------------|
 | `WithCommand(name, factory)` | Register a [custom command](/xlfill/guides/custom-commands/) |
+| `WithFunction(name, fn)` | Register a [custom expression function](/xlfill/guides/built-in-functions/) |
+| `WithI18n(translations)` | Provide translation map for the `t()` function |
 | `WithAreaListener(listener)` | Add a [cell transform hook](/xlfill/guides/area-listeners/) |
 | `WithPreWrite(fn)` | Callback before writing output |
 
@@ -273,6 +308,19 @@ type CompiledTemplate struct { /* ... */ }
 func (ct *CompiledTemplate) Fill(data map[string]any, outputPath string) error
 func (ct *CompiledTemplate) FillBytes(data map[string]any) ([]byte, error)
 func (ct *CompiledTemplate) FillWriter(data map[string]any, w io.Writer) error
+func (ct *CompiledTemplate) FillBatch(datasets []map[string]any, outputDir string, nameFunc func(i int, data map[string]any) string) ([]string, error)
+```
+
+`FillBatch` generates multiple files from the same compiled template. The `nameFunc` returns the filename for each dataset. Returns the list of generated file paths.
+
+```go
+compiled, _ := xlfill.Compile("template.xlsx")
+files, err := compiled.FillBatch(datasets, "./reports/",
+    func(i int, data map[string]any) string {
+        return fmt.Sprintf("report_%s.xlsx", data["month"])
+    },
+)
+// files: ["./reports/report_jan.xlsx", "./reports/report_feb.xlsx", ...]
 ```
 
 ### CellRef, AreaRef, Size
@@ -397,6 +445,114 @@ type Warning struct {
 ```
 
 Collected via `Filler.Warnings()` after processing.
+
+### RowScanner interface
+
+```go
+type RowScanner interface {
+    Next() bool
+    Scan() (map[string]any, error)
+    Close() error
+}
+```
+
+Implement `RowScanner` for lazy data loading — rows are scanned one at a time during template processing instead of loading everything into memory upfront. Use with database cursors or CSV readers for large datasets.
+
+### DeferredAction
+
+```go
+type DeferredAction struct {
+    Command string
+    Area    AreaRef
+    Attrs   map[string]string
+}
+```
+
+Represents a command that executes after all rows are written. Commands like `jx:table`, `jx:chart`, `jx:conditionalFormat`, `jx:group`, `jx:definedName`, and `jx:sparkline` use deferred execution to ensure correct output ranges.
+
+## Data helpers
+
+Convert common Go data sources to the `map[string]any` format XLFill expects:
+
+### StructSliceToData
+
+```go
+func StructSliceToData(key string, slice any) map[string]any
+```
+
+Convert a slice of structs to a data map. The struct fields become map keys.
+
+```go
+type Employee struct {
+    Name       string
+    Department string
+    Salary     float64
+}
+
+employees := []Employee{{Name: "Alice"}, {Name: "Bob"}}
+data := xlfill.StructSliceToData("employees", employees)
+// data = map[string]any{"employees": [...]any{map[Name:Alice ...], map[Name:Bob ...]}}
+```
+
+### JSONToData
+
+```go
+func JSONToData(jsonBytes []byte) (map[string]any, error)
+```
+
+Parse JSON bytes directly into a data map.
+
+```go
+data, err := xlfill.JSONToData([]byte(`{"employees": [{"Name": "Alice"}]}`))
+xlfill.Fill("template.xlsx", "output.xlsx", data)
+```
+
+### SQLRowsToData
+
+```go
+func SQLRowsToData(key string, rows *sql.Rows) (map[string]any, error)
+```
+
+Convert `*sql.Rows` from a database query into a data map. Column names become field names.
+
+```go
+rows, _ := db.Query("SELECT name, department, salary FROM employees")
+data, err := xlfill.SQLRowsToData("employees", rows)
+xlfill.Fill("template.xlsx", "output.xlsx", data)
+```
+
+## Built-in functions
+
+XLFill includes 16 built-in functions available in all `${...}` expressions. See the full [Built-in Functions guide](/xlfill/guides/built-in-functions/) for examples.
+
+| Function | Description |
+|----------|-------------|
+| `hyperlink(url, display)` | Create a clickable hyperlink |
+| `comment(text)` | Add a cell comment/note |
+| `upper(s)` | Convert to uppercase |
+| `lower(s)` | Convert to lowercase |
+| `title(s)` | Convert to title case |
+| `join(sep, items)` | Join a slice into a string |
+| `formatNumber(value, format)` | Format a number |
+| `formatDate(value, layout)` | Format a date/time |
+| `coalesce(values...)` | First non-nil/non-empty value |
+| `ifEmpty(value, fallback)` | Fallback for empty values |
+| `sumBy(items, field)` | Sum a numeric field |
+| `avgBy(items, field)` | Average a numeric field |
+| `countBy(items, field)` | Count non-nil field values |
+| `minBy(items, field)` | Minimum of a numeric field |
+| `maxBy(items, field)` | Maximum of a numeric field |
+| `t(key)` | Translate using i18n map |
+
+Register custom functions with `WithFunction`:
+
+```go
+xlfill.Fill("template.xlsx", "output.xlsx", data,
+    xlfill.WithFunction("currency", func(args ...any) (any, error) {
+        return fmt.Sprintf("$%.2f", args[0].(float64)), nil
+    }),
+)
+```
 
 ## Data input
 

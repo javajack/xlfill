@@ -102,12 +102,22 @@ func (f *Filler) FillWriter(data map[string]any, w io.Writer) error {
 	if useStreaming {
 		sheets := etx.GetSheetNames()
 		if len(sheets) > 0 {
-			var serr error
-			stx, serr = NewStreamingTransformer(etx, sheets[0])
-			if serr != nil {
-				return fmt.Errorf("init streaming: %w", serr)
+			targetSheet := sheets[0]
+			shouldStream := len(f.opts.streamingSheets) == 0 // stream all if no specific sheets
+			for _, s := range f.opts.streamingSheets {
+				if s == targetSheet {
+					shouldStream = true
+					break
+				}
 			}
-			tx = stx
+			if shouldStream {
+				var serr error
+				stx, serr = NewStreamingTransformer(etx, targetSheet)
+				if serr != nil {
+					return fmt.Errorf("init streaming: %w", serr)
+				}
+				tx = stx
+			}
 		}
 	}
 
@@ -119,6 +129,12 @@ func (f *Filler) FillWriter(data map[string]any, w io.Writer) error {
 	ctxOpts := []ContextOption{}
 	if f.opts.notationBegin != "${" || f.opts.notationEnd != "}" {
 		ctxOpts = append(ctxOpts, WithNotation(f.opts.notationBegin, f.opts.notationEnd))
+	}
+	if len(f.opts.customFunctions) > 0 {
+		ctxOpts = append(ctxOpts, WithCustomFunctions(f.opts.customFunctions))
+	}
+	if len(f.opts.i18nBundle) > 0 {
+		ctxOpts = append(ctxOpts, WithI18nBundle(f.opts.i18nBundle))
 	}
 	ctx := NewContext(data, ctxOpts...)
 
@@ -155,10 +171,26 @@ func (f *Filler) FillWriter(data map[string]any, w io.Writer) error {
 		f.debug.TraceDone()
 	}
 
+	// Execute deferred actions (e.g., jx:table, jx:chart that need final output ranges)
+	for _, action := range ctx.deferred.Actions() {
+		if action.Execute != nil {
+			if err := action.Execute(etx); err != nil {
+				return fmt.Errorf("deferred action %q: %w", action.Name, err)
+			}
+		}
+	}
+
 	// Recalculate formulas on open
 	if f.opts.recalculateOnOpen {
 		if err := etx.SetRecalculateOnOpen(true); err != nil {
 			return fmt.Errorf("set recalculate on open: %w", err)
+		}
+	}
+
+	// Set document properties if configured
+	if f.opts.docProperties != nil {
+		if err := etx.file.SetDocProps(f.opts.docProperties); err != nil {
+			return fmt.Errorf("set document properties: %w", err)
 		}
 	}
 

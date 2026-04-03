@@ -140,6 +140,29 @@ err := xlfill.Fill("template.xlsx", "report.xlsx", data,
 
 Progress works with all modes — sequential, streaming, and parallel (using atomic counters for thread safety).
 
+## Deferred commands
+
+Several commands use **deferred execution** — they collect their configuration during template processing but apply their effects only after all rows are written. This is both a performance optimization and a correctness requirement: these commands need to know the final output row count to set correct ranges.
+
+**Deferred commands:**
+
+| Command | Why deferred |
+|---------|-------------|
+| `jx:table` | Table range must cover all output rows |
+| `jx:chart` | Chart data ranges must reference final row positions |
+| `jx:conditionalFormat` | Format rules must span the entire output range |
+| `jx:group` | Outline group ranges depend on final row positions |
+| `jx:definedName` | Named ranges must cover all output rows |
+| `jx:sparkline` | Data ranges must reference final cell positions |
+
+**How it works:** During template processing, each deferred command records a `DeferredAction` with its template-relative area and attributes. After all rows are written, the engine replays these actions with adjusted row offsets. This means:
+
+- No wasted work if a `jx:if` excludes the area containing the deferred command
+- Correct ranges even with nested loops that expand to variable heights
+- Compatible with streaming mode (deferred actions run after the stream is finalized)
+
+**Performance impact:** Deferred execution adds negligible overhead — typically < 1ms for a report with multiple tables, charts, and conditional formats. The alternative (applying during expansion and then re-adjusting ranges) would be both slower and more error-prone.
+
 ## Internal optimizations
 
 These happen automatically — no configuration needed:

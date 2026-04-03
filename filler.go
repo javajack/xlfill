@@ -310,6 +310,54 @@ func (f *Filler) propagateListeners(area *Area) {
 			if c.Area != nil {
 				f.propagateListeners(c.Area)
 			}
+		case *DataValidationCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		case *TableCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		case *ConditionalFormatCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		case *GroupCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		case *ChartCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		case *DefinedNameCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		case *SparklineCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		case *PageBreakCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		case *AutoColWidthCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		case *FreezePanesCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		case *ProtectCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
+		case *IncludeCommand:
+			if c.Area != nil {
+				f.propagateListeners(c.Area)
+			}
 		}
 	}
 }
@@ -355,6 +403,30 @@ func getCommandArea(cmd Command) *Area {
 	case *AutoRowHeightCommand:
 		return c.Area
 	case *RepeatCommand:
+		return c.Area
+	case *DataValidationCommand:
+		return c.Area
+	case *TableCommand:
+		return c.Area
+	case *ConditionalFormatCommand:
+		return c.Area
+	case *GroupCommand:
+		return c.Area
+	case *ChartCommand:
+		return c.Area
+	case *DefinedNameCommand:
+		return c.Area
+	case *SparklineCommand:
+		return c.Area
+	case *PageBreakCommand:
+		return c.Area
+	case *AutoColWidthCommand:
+		return c.Area
+	case *FreezePanesCommand:
+		return c.Area
+	case *ProtectCommand:
+		return c.Area
+	case *IncludeCommand:
 		return c.Area
 	}
 	return nil
@@ -426,6 +498,30 @@ func attachArea(cmd Command, area *Area) {
 	case *AutoRowHeightCommand:
 		c.Area = area
 	case *RepeatCommand:
+		c.Area = area
+	case *DataValidationCommand:
+		c.Area = area
+	case *TableCommand:
+		c.Area = area
+	case *ConditionalFormatCommand:
+		c.Area = area
+	case *GroupCommand:
+		c.Area = area
+	case *ChartCommand:
+		c.Area = area
+	case *DefinedNameCommand:
+		c.Area = area
+	case *SparklineCommand:
+		c.Area = area
+	case *PageBreakCommand:
+		c.Area = area
+	case *AutoColWidthCommand:
+		c.Area = area
+	case *FreezePanesCommand:
+		c.Area = area
+	case *ProtectCommand:
+		c.Area = area
+	case *IncludeCommand:
 		c.Area = area
 	}
 }

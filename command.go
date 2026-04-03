@@ -30,6 +30,18 @@ func NewCommandRegistry() *CommandRegistry {
 	r.Register("updateCell", newUpdateCellCommandFromAttrs)
 	r.Register("autoRowHeight", newAutoRowHeightCommandFromAttrs)
 	r.Register("repeat", newRepeatCommandFromAttrs)
+	r.Register("dataValidation", newDataValidationCommandFromAttrs)
+	r.Register("table", newTableCommandFromAttrs)
+	r.Register("conditionalFormat", newConditionalFormatCommandFromAttrs)
+	r.Register("group", newGroupCommandFromAttrs)
+	r.Register("chart", newChartCommandFromAttrs)
+	r.Register("definedName", newDefinedNameCommandFromAttrs)
+	r.Register("sparkline", newSparklineCommandFromAttrs)
+	r.Register("pageBreak", newPageBreakCommandFromAttrs)
+	r.Register("autoColWidth", newAutoColWidthCommandFromAttrs)
+	r.Register("freezePanes", newFreezePanesCommandFromAttrs)
+	r.Register("protect", newProtectCommandFromAttrs)
+	r.Register("include", newIncludeCommandFromAttrs)
 	return r
 }
 

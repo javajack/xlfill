@@ -19,15 +19,19 @@ type ExcelizeTransformer struct {
 	// Pre-counted cell stats for pre-allocation
 	commentCellCount int
 	formulaCellCount int
+
+	// Data validations read from template, keyed by sheet name
+	validations map[string][]*excelize.DataValidation
 }
 
 // NewExcelizeTransformer creates a Transformer from an excelize file.
 func NewExcelizeTransformer(f *excelize.File) (*ExcelizeTransformer, error) {
 	tx := &ExcelizeTransformer{
-		file:       f,
-		sheets:     make(map[string]*SheetData),
-		styleCache: make(map[string]int),
-		targetRefs: make(map[CellRef][]CellRef),
+		file:        f,
+		sheets:      make(map[string]*SheetData),
+		styleCache:  make(map[string]int),
+		targetRefs:  make(map[CellRef][]CellRef),
+		validations: make(map[string][]*excelize.DataValidation),
 	}
 	if err := tx.readAllCellData(); err != nil {
 		return nil, fmt.Errorf("read template data: %w", err)
@@ -154,6 +158,12 @@ func (tx *ExcelizeTransformer) readAllCellData() error {
 				}
 			}
 		}
+
+		// Read data validations from the sheet for preservation during Transform
+		dvs, dvErr := tx.file.GetDataValidations(sheet)
+		if dvErr == nil && len(dvs) > 0 {
+			tx.validations[sheet] = dvs
+		}
 	}
 	return nil
 }
@@ -253,6 +263,7 @@ func (tx *ExcelizeTransformer) Transform(src, target CellRef, ctx *Context, upda
 			}
 		}
 		tx.file.SetCellFormula(targetSheet, targetCell, formula)
+		tx.preserveDataValidation(src, target, targetSheet)
 		srcData.AddTargetPos(target)
 		tx.addTargetRef(src, target)
 		return nil
@@ -276,6 +287,14 @@ func (tx *ExcelizeTransformer) Transform(src, target CellRef, ctx *Context, upda
 				linkType = "Location"
 			}
 			tx.file.SetCellHyperLink(targetSheet, targetCell, hv.URL, linkType)
+		} else if cv, ok := val.(CommentValue); ok {
+			// Handle CommentValue — write cell text and add Excel comment
+			tx.file.SetCellValue(targetSheet, targetCell, cv.Text)
+			tx.file.AddComment(targetSheet, excelize.Comment{
+				Cell:   targetCell,
+				Author: cv.Author,
+				Text:   cv.Text,
+			})
 		} else if err := tx.writeTypedValue(targetSheet, targetCell, val, cellType); err != nil {
 			return err
 		}
@@ -284,9 +303,67 @@ func (tx *ExcelizeTransformer) Transform(src, target CellRef, ctx *Context, upda
 		tx.file.SetCellValue(targetSheet, targetCell, srcData.Value)
 	}
 
+	// Preserve data validations from the source cell
+	tx.preserveDataValidation(src, target, targetSheet)
+
 	srcData.AddTargetPos(target)
 	tx.addTargetRef(src, target)
 	return nil
+}
+
+// preserveDataValidation checks if the source cell is covered by any data validation
+// rule and applies a copy of the validation to the target cell.
+func (tx *ExcelizeTransformer) preserveDataValidation(src, target CellRef, targetSheet string) {
+	dvs := tx.validations[src.Sheet]
+	if len(dvs) == 0 {
+		return
+	}
+	srcCell := src.CellName()
+	for _, dv := range dvs {
+		if cellInSqref(srcCell, dv.Sqref) {
+			newDV := *dv // shallow copy
+			newDV.Sqref = target.CellName()
+			tx.file.AddDataValidation(targetSheet, &newDV)
+		}
+	}
+}
+
+// cellInSqref returns true if cellName (e.g. "A2") is covered by the sqref string.
+// Sqref can be a single cell "A2", a range "A2:A10", or space-separated list "A2:A5 B2:B5".
+func cellInSqref(cellName, sqref string) bool {
+	parts := strings.Fields(sqref)
+	for _, part := range parts {
+		if strings.Contains(part, ":") {
+			rangeParts := strings.SplitN(part, ":", 2)
+			if len(rangeParts) == 2 {
+				if cellInRange(cellName, rangeParts[0], rangeParts[1]) {
+					return true
+				}
+			}
+		} else {
+			if strings.EqualFold(cellName, part) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// cellInRange checks if cellName falls within the rectangle defined by topLeft:bottomRight.
+func cellInRange(cellName, topLeft, bottomRight string) bool {
+	col, row, err := parseCellName(strings.ReplaceAll(cellName, "$", ""))
+	if err != nil {
+		return false
+	}
+	tlCol, tlRow, err := parseCellName(strings.ReplaceAll(topLeft, "$", ""))
+	if err != nil {
+		return false
+	}
+	brCol, brRow, err := parseCellName(strings.ReplaceAll(bottomRight, "$", ""))
+	if err != nil {
+		return false
+	}
+	return row >= tlRow && row <= brRow && col >= tlCol && col <= brCol
 }
 
 // writeTypedValue writes a value to a cell with the correct type.

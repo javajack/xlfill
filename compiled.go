@@ -69,6 +69,22 @@ func (ct *CompiledTemplate) FillBytes(data map[string]any) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// FillBatch processes the compiled template for each item in items,
+// producing one output file per item. nameFn is called to determine the
+// output file path for each item based on its index and data.
+func (ct *CompiledTemplate) FillBatch(
+	items []map[string]any,
+	nameFn func(index int, data map[string]any) string,
+) error {
+	for i, data := range items {
+		outputPath := nameFn(i, data)
+		if err := ct.Fill(data, outputPath); err != nil {
+			return fmt.Errorf("batch item %d (%s): %w", i, outputPath, err)
+		}
+	}
+	return nil
+}
+
 // FillWriter processes the compiled template with data and writes to w.
 // Each call creates a fresh transformer from the cached template bytes,
 // re-parses areas (fast since template is in memory), and processes.
@@ -93,6 +109,10 @@ func (ct *CompiledTemplate) FillWriter(data map[string]any, w io.Writer) error {
 	filler.opts.parallelism = ct.opts.parallelism
 	filler.opts.autoMode = ct.opts.autoMode
 	filler.opts.autoModeHint = ct.opts.autoModeHint
+	filler.opts.customFunctions = ct.opts.customFunctions
+	filler.opts.i18nBundle = ct.opts.i18nBundle
+	filler.opts.docProperties = ct.opts.docProperties
+	filler.opts.streamingSheets = ct.opts.streamingSheets
 	// Defensive copy of areaListeners slice so concurrent fills don't share state
 	if len(ct.opts.areaListeners) > 0 {
 		filler.opts.areaListeners = make([]AreaListener, len(ct.opts.areaListeners))

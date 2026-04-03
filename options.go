@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"time"
+
+	"github.com/xuri/excelize/v2"
 )
 
 // FillProgress reports progress during template filling.
@@ -40,6 +42,18 @@ type Options struct {
 	parallelism  int  // number of goroutines for parallel each (0 = sequential)
 	autoMode     bool // auto-detect optimal mode from template structure
 	autoModeHint map[string]any
+
+	// Custom template functions registered via WithFunction.
+	customFunctions map[string]any
+
+	// i18n resource bundle for the t() template function.
+	i18nBundle map[string]string
+
+	// Document properties to set on the output workbook.
+	docProperties *excelize.DocProperties
+
+	// Selective sheet streaming: when non-empty, only these sheets use StreamWriter.
+	streamingSheets []string
 }
 
 func defaultOptions() *Options {
@@ -158,4 +172,100 @@ func WithStreaming(enabled bool) Option {
 // writes, and each goroutine gets an independent Context clone.
 func WithParallelism(n int) Option {
 	return func(o *Options) { o.parallelism = n }
+}
+
+// WithFunction registers a custom template function that will be available
+// in all template expressions. The function name must not collide with existing
+// data keys (data keys take precedence).
+//
+// Example:
+//
+//	filler := NewFiller(
+//	    WithTemplate("template.xlsx"),
+//	    WithFunction("currency", func(amount float64) string {
+//	        return fmt.Sprintf("$%.2f", amount)
+//	    }),
+//	)
+func WithFunction(name string, fn any) Option {
+	return func(o *Options) {
+		if o.customFunctions == nil {
+			o.customFunctions = make(map[string]any)
+		}
+		o.customFunctions[name] = fn
+	}
+}
+
+// WithI18n registers an i18n resource bundle for the t() template function.
+// The bundle maps translation keys to localized strings.
+//
+// Example:
+//
+//	filler := NewFiller(
+//	    WithTemplate("template.xlsx"),
+//	    WithI18n(map[string]string{
+//	        "greeting": "Hola",
+//	        "farewell": "Adios",
+//	    }),
+//	)
+//
+// In the template: ${t("greeting")} renders as "Hola".
+func WithI18n(bundle map[string]string) Option {
+	return func(o *Options) { o.i18nBundle = bundle }
+}
+
+// WithDocumentProperties sets Excel document core properties (title, creator, etc.)
+// on the output workbook. Supported keys: "title", "subject", "creator",
+// "description", "keywords", "category", "language", "version",
+// "lastModifiedBy", "contentStatus", "revision", "identifier".
+func WithDocumentProperties(props map[string]string) Option {
+	return func(o *Options) {
+		dp := &excelize.DocProperties{}
+		if v, ok := props["title"]; ok {
+			dp.Title = v
+		}
+		if v, ok := props["subject"]; ok {
+			dp.Subject = v
+		}
+		if v, ok := props["creator"]; ok {
+			dp.Creator = v
+		}
+		if v, ok := props["description"]; ok {
+			dp.Description = v
+		}
+		if v, ok := props["keywords"]; ok {
+			dp.Keywords = v
+		}
+		if v, ok := props["category"]; ok {
+			dp.Category = v
+		}
+		if v, ok := props["language"]; ok {
+			dp.Language = v
+		}
+		if v, ok := props["version"]; ok {
+			dp.Version = v
+		}
+		if v, ok := props["lastModifiedBy"]; ok {
+			dp.LastModifiedBy = v
+		}
+		if v, ok := props["contentStatus"]; ok {
+			dp.ContentStatus = v
+		}
+		if v, ok := props["revision"]; ok {
+			dp.Revision = v
+		}
+		if v, ok := props["identifier"]; ok {
+			dp.Identifier = v
+		}
+		o.docProperties = dp
+	}
+}
+
+// WithStreamingSheets enables streaming mode for specific sheets only.
+// When set, only the named sheets use excelize StreamWriter; other sheets
+// are processed normally. This implicitly enables streaming mode.
+func WithStreamingSheets(sheets ...string) Option {
+	return func(o *Options) {
+		o.streaming = true
+		o.streamingSheets = sheets
+	}
 }

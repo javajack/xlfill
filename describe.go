@@ -182,6 +182,60 @@ func describeCommandAttrs(cmd Command) string {
 		if c.Direction != "" && c.Direction != "DOWN" {
 			parts = append(parts, fmt.Sprintf("direction=%q", c.Direction))
 		}
+	case *DataValidationCommand:
+		parts = append(parts, fmt.Sprintf("type=%q", c.ValidationType))
+		if c.Source != "" {
+			parts = append(parts, fmt.Sprintf("source=%q", c.Source))
+		}
+	case *TableCommand:
+		parts = append(parts, fmt.Sprintf("name=%q", c.TableName))
+		parts = append(parts, fmt.Sprintf("style=%q", c.Style))
+	case *ConditionalFormatCommand:
+		parts = append(parts, fmt.Sprintf("type=%q", c.FormatType))
+	case *GroupCommand:
+		if c.Collapsed != "false" {
+			parts = append(parts, fmt.Sprintf("collapsed=%q", c.Collapsed))
+		}
+	case *ChartCommand:
+		parts = append(parts, fmt.Sprintf("type=%q", c.ChartType))
+		if c.Title != "" {
+			parts = append(parts, fmt.Sprintf("title=%q", c.Title))
+		}
+	case *DefinedNameCommand:
+		parts = append(parts, fmt.Sprintf("name=%q", c.DefinedNameValue))
+		if c.Scope != "workbook" {
+			parts = append(parts, fmt.Sprintf("scope=%q", c.Scope))
+		}
+	case *SparklineCommand:
+		parts = append(parts, fmt.Sprintf("type=%q", c.SparkType))
+		parts = append(parts, fmt.Sprintf("data=%q", c.DataRange))
+	case *PageBreakCommand:
+		// no extra attributes
+	case *AutoColWidthCommand:
+		// no extra attributes
+	case *FreezePanesCommand:
+		if c.FreezeRow != "" {
+			parts = append(parts, fmt.Sprintf("row=%q", c.FreezeRow))
+		}
+		if c.FreezeCol != "" {
+			parts = append(parts, fmt.Sprintf("col=%q", c.FreezeCol))
+		}
+	case *ProtectCommand:
+		if c.Password != "" {
+			parts = append(parts, "password=***")
+		}
+		if c.AllowSort == "true" {
+			parts = append(parts, "allowSort=\"true\"")
+		}
+		if c.AllowFilter == "true" {
+			parts = append(parts, "allowFilter=\"true\"")
+		}
+	case *IncludeCommand:
+		parts = append(parts, fmt.Sprintf("template=%q", c.TemplatePath))
+		if c.SourceSheet != "" {
+			parts = append(parts, fmt.Sprintf("sheet=%q", c.SourceSheet))
+		}
+		parts = append(parts, fmt.Sprintf("area=%q", c.SourceArea))
 	}
 	if len(parts) == 0 {
 		return ""

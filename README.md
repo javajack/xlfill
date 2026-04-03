@@ -198,6 +198,105 @@ jx:repeat(count="10" var="i" lastCell="C1")
 | `direction` | Expansion direction: `DOWN` or `RIGHT`           | `DOWN`  |
 | `lastCell`  | Bottom-right cell of the area to repeat          | required |
 
+#### jx:table
+
+Creates a structured Excel table with auto-filter, banded rows, and optional total row.
+
+```
+jx:table(lastCell="D1" name="EmployeeTable" style="TableStyleMedium9")
+```
+
+#### jx:chart
+
+Embeds Excel charts (bar, line, pie, doughnut, area, scatter, radar) with auto-sized data ranges.
+
+```
+jx:chart(lastCell="H15" type="bar" title="Revenue" catRange="A2:A2" valRange="B2:B2")
+```
+
+#### jx:sparkline
+
+Adds mini in-cell charts (line, column, win/loss) alongside your data rows.
+
+```
+jx:sparkline(lastCell="E1" type="line" dataRange="B1:D1")
+```
+
+#### jx:conditionalFormat
+
+Applies data bars, color scales, icon sets, and cell highlighting rules.
+
+```
+jx:conditionalFormat(lastCell="B1" type="dataBar" minColor="#638EC6" maxColor="#638EC6")
+jx:conditionalFormat(lastCell="C1" type="colorScale" minColor="#F8696B" midColor="#FFEB84" maxColor="#63BE7B")
+jx:conditionalFormat(lastCell="D1" type="iconSet" iconStyle="3Arrows")
+```
+
+#### jx:dataValidation
+
+Adds dropdown lists, integer/decimal constraints, and input messages to cells.
+
+```
+jx:dataValidation(lastCell="B1" type="list" formula1="choices" allowBlank="true")
+jx:dataValidation(lastCell="C1" type="whole" operator="between" formula1="1" formula2="100")
+```
+
+#### jx:definedName
+
+Creates named ranges for formulas, pivot tables, and cross-sheet references.
+
+```
+jx:definedName(lastCell="D1" name="SalesData")
+```
+
+#### jx:group
+
+Creates collapsible outline groups for hierarchical reports.
+
+```
+jx:group(lastCell="D1" collapsed="false")
+```
+
+#### jx:pageBreak
+
+Inserts page breaks for print-ready reports.
+
+```
+jx:pageBreak(lastCell="D1")
+```
+
+#### jx:autoColWidth
+
+Auto-fits column widths to content after processing.
+
+```
+jx:autoColWidth(lastCell="D1")
+```
+
+#### jx:freezePanes
+
+Freezes rows and/or columns so headers stay visible while scrolling.
+
+```
+jx:freezePanes(lastCell="A1" row="1" col="0")
+```
+
+#### jx:protect
+
+Protects sheets from editing with configurable permissions.
+
+```
+jx:protect(lastCell="A1" password="secret" sort="true" autoFilter="true")
+```
+
+#### jx:include
+
+Composes templates from reusable fragments (shared headers, footers, etc.).
+
+```
+jx:include(lastCell="D3" area="Header!A1:D3")
+```
+
 ## API
 
 ### Top-Level Functions
@@ -222,6 +321,24 @@ issues, err := xlfill.ValidateData("template.xlsx", data)
 
 // Auto-detect optimal processing mode
 suggestion, err := xlfill.SuggestMode("template.xlsx", map[string]any{"itemCount": 50000})
+
+// Batch generation from compiled template
+compiled, _ := xlfill.Compile("template.xlsx")
+compiled.FillBatch(datasets, "./reports/", func(i int, d map[string]any) string {
+    return fmt.Sprintf("report_%s.xlsx", d["month"])
+})
+
+// Serve Excel reports from HTTP endpoint
+http.Handle("/report", xlfill.HTTPHandler("template.xlsx",
+    func(r *http.Request) (map[string]any, error) {
+        return loadData(r), nil
+    },
+))
+
+// Data helpers — convert structs, JSON, or SQL rows to data maps
+data := xlfill.StructSliceToData("employees", employees)
+data, _ := xlfill.JSONToData(jsonBytes)
+data, _ := xlfill.SQLRowsToData("employees", rows)
 ```
 
 ### Filler (Advanced)
@@ -244,6 +361,8 @@ err := filler.Fill(data, "output.xlsx")
 | `WithTemplateReader(r)`       | Set template as `io.Reader`                          |
 | `WithExpressionNotation(b,e)` | Custom expression delimiters (default: `${`, `}`)    |
 | `WithCommand(name, factory)`  | Register a custom command                            |
+| `WithFunction(name, fn)`      | Register a custom expression function                |
+| `WithI18n(translations)`      | Provide translation map for the `t()` function       |
 | `WithClearTemplateCells(bool)` | Clear unexpanded template cells (default: true)      |
 | `WithKeepTemplateSheet(bool)` | Keep original template sheet in output               |
 | `WithHideTemplateSheet(bool)` | Hide template sheet instead of deleting              |
@@ -257,6 +376,8 @@ err := filler.Fill(data, "output.xlsx")
 | `WithProgressFunc(fn)`        | Progress callback with rows processed and timing     |
 | `WithStrictMode(bool)`        | Turn unknown command warnings into errors            |
 | `WithDebugWriter(w)`          | Structured trace output during processing            |
+| `WithStreamingSheets(sheets...)`| Enable streaming only for specific sheets          |
+| `WithDocumentProperties(props)` | Set workbook metadata (title, author, etc.)        |
 
 ## Custom Commands
 
@@ -282,14 +403,28 @@ Then use in templates: `jx:highlight(color="yellow" lastCell="C1")`
 
 ## Built-in Functions
 
-### hyperlink(url, display)
+XLFill ships with 16 built-in functions available in all `${...}` expressions:
 
-Creates a clickable hyperlink in a cell:
+| Function | Example | Description |
+|----------|---------|-------------|
+| `hyperlink(url, display)` | `${hyperlink(e.URL, e.Name)}` | Create a clickable hyperlink |
+| `comment(text)` | `${comment(e.Notes)}` | Add a cell comment/note |
+| `upper(s)` | `${upper(e.Name)}` | Convert to uppercase |
+| `lower(s)` | `${lower(e.Email)}` | Convert to lowercase |
+| `title(s)` | `${title(e.Name)}` | Convert to title case |
+| `join(sep, items)` | `${join(", ", e.Skills)}` | Join a slice into a string |
+| `formatNumber(val, fmt)` | `${formatNumber(e.Salary, "#,##0.00")}` | Format a number |
+| `formatDate(val, layout)` | `${formatDate(e.Hire, "2006-01-02")}` | Format a date/time |
+| `coalesce(values...)` | `${coalesce(e.Nick, e.Name, "N/A")}` | First non-empty value |
+| `ifEmpty(val, fallback)` | `${ifEmpty(e.Dept, "Unassigned")}` | Fallback for empty values |
+| `sumBy(items, field)` | `${sumBy(employees, "Salary")}` | Sum a numeric field |
+| `avgBy(items, field)` | `${avgBy(employees, "Salary")}` | Average a numeric field |
+| `countBy(items, field)` | `${countBy(employees, "Email")}` | Count non-nil values |
+| `minBy(items, field)` | `${minBy(scores, "Value")}` | Minimum of a numeric field |
+| `maxBy(items, field)` | `${maxBy(scores, "Value")}` | Maximum of a numeric field |
+| `t(key)` | `${t("header.name")}` | Translate using i18n map |
 
-```
-${hyperlink("https://example.com", "Click here")}
-${hyperlink(e.ProfileURL, e.Name)}
-```
+Register custom functions with `WithFunction("name", fn)`. See the full [Built-in Functions guide](https://javajack.github.io/xlfill/guides/built-in-functions/).
 
 ## Built-in Variables
 
