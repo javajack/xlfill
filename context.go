@@ -25,6 +25,9 @@ type Context struct {
 	// Deferred actions registered during command processing.
 	deferred *DeferredRegistry
 
+	// includeDepth tracks the current nesting depth of jx:include commands.
+	includeDepth int
+
 	// Custom template functions (from WithFunction API).
 	customFunctions map[string]any
 
@@ -102,8 +105,8 @@ func NewContext(data map[string]any, opts ...ContextOption) *Context {
 }
 
 // RegisterDeferred registers a deferred action to be executed after all areas are processed.
-func (c *Context) RegisterDeferred(action DeferredAction) {
-	c.deferred.Add(action)
+func (c *Context) RegisterDeferred(action DeferredAction) error {
+	return c.deferred.Add(action)
 }
 
 // Deferred returns the deferred registry for this context.
@@ -129,6 +132,7 @@ func (c *Context) Clone() *Context {
 		deferred:        c.deferred,        // shared, thread-safe
 		customFunctions: c.customFunctions,  // shared read-only
 		i18nBundle:      c.i18nBundle,       // shared read-only
+		includeDepth:    c.includeDepth,
 	}
 }
 

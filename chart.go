@@ -87,8 +87,13 @@ func (c *ChartCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transf
 		height = 290
 	}
 
+	// Validate chart type at creation time (fail fast)
+	if _, ok := chartTypeMap[chartTypeName]; !ok {
+		return ZeroSize, fmt.Errorf("unsupported chart type: %q", chartTypeName)
+	}
+
 	// Register deferred action
-	ctx.RegisterDeferred(DeferredAction{
+	if err := ctx.RegisterDeferred(DeferredAction{
 		Name:     "chart",
 		Sheet:    sheet,
 		StartRow: cellRef.Row,
@@ -96,10 +101,7 @@ func (c *ChartCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transf
 		EndRow:   cellRef.Row + size.Height - 1,
 		EndCol:   cellRef.Col + size.Width - 1,
 		Execute: func(tx *ExcelizeTransformer) error {
-			ct, ok := chartTypeMap[chartTypeName]
-			if !ok {
-				return fmt.Errorf("unsupported chart type: %q", chartTypeName)
-			}
+			ct := chartTypeMap[chartTypeName]
 
 			chartSeries := []excelize.ChartSeries{
 				{
@@ -119,7 +121,9 @@ func (c *ChartCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transf
 				},
 			})
 		},
-	})
+	}); err != nil {
+		return ZeroSize, fmt.Errorf("chart: %w", err)
+	}
 
 	return size, nil
 }

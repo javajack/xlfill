@@ -47,7 +47,7 @@ func (c *GroupCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transf
 	collapsed := c.Collapsed == "true"
 
 	// Register deferred action
-	ctx.RegisterDeferred(DeferredAction{
+	if err := ctx.RegisterDeferred(DeferredAction{
 		Name:     "group",
 		Sheet:    sheet,
 		StartRow: startRow,
@@ -73,7 +73,9 @@ func (c *GroupCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transf
 
 			return nil
 		},
-	})
+	}); err != nil {
+		return ZeroSize, fmt.Errorf("group: %w", err)
+	}
 
 	return size, nil
 }

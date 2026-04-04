@@ -26,8 +26,8 @@ func TestDeferredRegistry_AddAndActions(t *testing.T) {
 		Execute: func(tx *ExcelizeTransformer) error { return nil },
 	}
 
-	reg.Add(action1)
-	reg.Add(action2)
+	require.NoError(t, reg.Add(action1))
+	require.NoError(t, reg.Add(action2))
 
 	actions := reg.Actions()
 	require.Len(t, actions, 2)
@@ -39,7 +39,7 @@ func TestDeferredRegistry_AddAndActions(t *testing.T) {
 
 func TestDeferredRegistry_Reset(t *testing.T) {
 	reg := NewDeferredRegistry()
-	reg.Add(DeferredAction{Name: "test"})
+	require.NoError(t, reg.Add(DeferredAction{Name: "test"}))
 	require.Len(t, reg.Actions(), 1)
 
 	reg.Reset()
@@ -48,7 +48,7 @@ func TestDeferredRegistry_Reset(t *testing.T) {
 
 func TestDeferredRegistry_ActionsReturnsDefensiveCopy(t *testing.T) {
 	reg := NewDeferredRegistry()
-	reg.Add(DeferredAction{Name: "a"})
+	require.NoError(t, reg.Add(DeferredAction{Name: "a"}))
 
 	actions := reg.Actions()
 	actions[0].Name = "modified"
@@ -66,7 +66,7 @@ func TestDeferredRegistry_ConcurrentAccess(t *testing.T) {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
-			reg.Add(DeferredAction{Name: "action", StartRow: n})
+			_ = reg.Add(DeferredAction{Name: "action", StartRow: n})
 		}(i)
 	}
 	wg.Wait()
@@ -79,14 +79,14 @@ func TestContext_RegisterDeferred(t *testing.T) {
 	ctx := NewContext(map[string]any{"x": 1})
 
 	executed := false
-	ctx.RegisterDeferred(DeferredAction{
+	require.NoError(t, ctx.RegisterDeferred(DeferredAction{
 		Name:  "test",
 		Sheet: "Sheet1",
 		Execute: func(tx *ExcelizeTransformer) error {
 			executed = true
 			return nil
 		},
-	})
+	}))
 
 	actions := ctx.Deferred().Actions()
 	require.Len(t, actions, 1)
@@ -102,8 +102,8 @@ func TestContext_DeferredSharedAcrossClones(t *testing.T) {
 	ctx := NewContext(map[string]any{})
 	clone := ctx.Clone()
 
-	ctx.RegisterDeferred(DeferredAction{Name: "from-original"})
-	clone.RegisterDeferred(DeferredAction{Name: "from-clone"})
+	require.NoError(t, ctx.RegisterDeferred(DeferredAction{Name: "from-original"}))
+	require.NoError(t, clone.RegisterDeferred(DeferredAction{Name: "from-clone"}))
 
 	// Both should see all actions (shared registry)
 	assert.Len(t, ctx.Deferred().Actions(), 2)
@@ -126,7 +126,7 @@ func TestDeferredAction_NilExecute(t *testing.T) {
 func TestDeferredRegistry_OrderPreservation(t *testing.T) {
 	reg := NewDeferredRegistry()
 	for i := 0; i < 10; i++ {
-		reg.Add(DeferredAction{Name: "action", StartRow: i})
+		require.NoError(t, reg.Add(DeferredAction{Name: "action", StartRow: i}))
 	}
 
 	actions := reg.Actions()

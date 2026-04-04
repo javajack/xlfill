@@ -2,10 +2,27 @@ package xlfill
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/xuri/excelize/v2"
 )
+
+// MaxIncludeDepth limits the nesting depth of jx:include commands to prevent infinite recursion.
+const MaxIncludeDepth = 10
+
+// validateIncludePath rejects absolute paths and parent directory traversal.
+func validateIncludePath(path string) error {
+	if filepath.IsAbs(path) {
+		return fmt.Errorf("absolute paths not allowed: %q", path)
+	}
+	cleaned := filepath.Clean(path)
+	if strings.HasPrefix(cleaned, "..") {
+		return fmt.Errorf("path traversal not allowed: %q", path)
+	}
+	return nil
+}
 
 // IncludeCommand implements the jx:include command.
 // It opens an external template file, reads cells from a specified range,
@@ -43,12 +60,24 @@ func (c *IncludeCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Tran
 		return ZeroSize, nil
 	}
 
+	// Check include depth to prevent infinite recursion
+	if ctx.includeDepth >= MaxIncludeDepth {
+		return ZeroSize, fmt.Errorf("include: maximum nesting depth (%d) exceeded", MaxIncludeDepth)
+	}
+	ctx.includeDepth++
+	defer func() { ctx.includeDepth-- }()
+
 	// Evaluate template path (could be an expression)
 	tmplPath := c.TemplatePath
 	if val, err := ctx.Evaluate(tmplPath); err == nil {
 		if s, ok := val.(string); ok {
 			tmplPath = s
 		}
+	}
+
+	// Validate path to prevent traversal attacks
+	if err := validateIncludePath(tmplPath); err != nil {
+		return ZeroSize, fmt.Errorf("include: %w", err)
 	}
 
 	// Open the included template
@@ -83,9 +112,14 @@ func (c *IncludeCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Tran
 	for row := 0; row < areaH; row++ {
 		for col := 0; col < areaW; col++ {
 			srcCellName := ColToName(srcArea.First.Col+col) + strconv.Itoa(srcArea.First.Row+row+1)
-			val, _ := incFile.GetCellValue(srcSheet, srcCellName)
+			val, err := incFile.GetCellValue(srcSheet, srcCellName)
+			if err != nil {
+				return ZeroSize, fmt.Errorf("include: read cell %s: %w", srcCellName, err)
+			}
 			targetRef := NewCellRef(cellRef.Sheet, cellRef.Row+row, cellRef.Col+col)
-			etx.file.SetCellValue(cellRef.Sheet, targetRef.CellName(), val)
+			if err := etx.file.SetCellValue(cellRef.Sheet, targetRef.CellName(), val); err != nil {
+				return ZeroSize, fmt.Errorf("include: write cell %s: %w", targetRef.CellName(), err)
+			}
 		}
 	}
 

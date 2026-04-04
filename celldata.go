@@ -1,5 +1,7 @@
 package xlfill
 
+import "sync"
+
 // CellType represents the type of data in a cell.
 type CellType int
 
@@ -47,6 +49,7 @@ const (
 
 // CellData holds all information about a single cell in the template.
 type CellData struct {
+	mu              sync.Mutex      // protects TargetPositions and TargetParentArea in parallel mode
 	Ref             CellRef         // cell position
 	Value           any             // cell value
 	Type            CellType        // value type
@@ -77,13 +80,17 @@ func NewCellData(ref CellRef, value any, cellType CellType) *CellData {
 
 // AddTargetPos records that this cell was copied to the given target position.
 func (cd *CellData) AddTargetPos(ref CellRef) {
+	cd.mu.Lock()
 	cd.TargetPositions = append(cd.TargetPositions, ref)
+	cd.mu.Unlock()
 }
 
 // AddTargetPosWithArea records a target position with its parent area.
 func (cd *CellData) AddTargetPosWithArea(ref CellRef, area AreaRef) {
+	cd.mu.Lock()
 	cd.TargetPositions = append(cd.TargetPositions, ref)
 	cd.TargetParentArea = append(cd.TargetParentArea, area)
+	cd.mu.Unlock()
 }
 
 // IsFormulaCell returns true if this cell contains a formula.

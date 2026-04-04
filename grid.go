@@ -69,7 +69,9 @@ func (c *GridCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transfo
 	// Render headers (one per column)
 	for col, header := range headers {
 		target := NewCellRef(cellRef.Sheet, cellRef.Row, cellRef.Col+col)
-		transformer.SetCellValue(target, header)
+		if err := transformer.SetCellValue(target, header); err != nil {
+			return ZeroSize, fmt.Errorf("set grid header at %s: %w", target, err)
+		}
 	}
 	totalHeight++ // header row
 
@@ -89,7 +91,9 @@ func (c *GridCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transfo
 		}
 		for col := 0; col < totalWidth && col < len(rowSlice); col++ {
 			target := NewCellRef(cellRef.Sheet, cellRef.Row+1+rowIdx, cellRef.Col+col)
-			transformer.SetCellValue(target, rowSlice[col])
+			if err := transformer.SetCellValue(target, rowSlice[col]); err != nil {
+				return ZeroSize, fmt.Errorf("set grid data at %s: %w", target, err)
+			}
 		}
 		totalHeight++
 	}

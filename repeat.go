@@ -2,6 +2,9 @@ package xlfill
 
 import "fmt"
 
+// MaxRepeatCount limits the maximum number of repeat iterations to prevent resource exhaustion.
+const MaxRepeatCount = 1_000_000
+
 // RepeatCommand implements the jx:repeat command for repeating an area a fixed number of times.
 // Unlike jx:each which requires a collection, jx:repeat simply repeats the area N times,
 // optionally exposing the iteration index via the var attribute.
@@ -28,6 +31,9 @@ func newRepeatCommandFromAttrs(attrs map[string]string) (Command, error) {
 	if cmd.Direction == "" {
 		cmd.Direction = "DOWN"
 	}
+	if cmd.Direction != "DOWN" && cmd.Direction != "RIGHT" {
+		return nil, fmt.Errorf("repeat command: invalid direction %q (must be DOWN or RIGHT)", cmd.Direction)
+	}
 	return cmd, nil
 }
 
@@ -45,6 +51,9 @@ func (c *RepeatCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Trans
 	count := toInt(countVal)
 	if count <= 0 {
 		return ZeroSize, nil
+	}
+	if count > MaxRepeatCount {
+		return ZeroSize, fmt.Errorf("repeat count %d exceeds maximum %d", count, MaxRepeatCount)
 	}
 
 	isRight := c.Direction == "RIGHT"

@@ -56,10 +56,8 @@ func NewStreamingTransformer(reader *ExcelizeTransformer, sheet string) (*Stream
 	// Copy column widths from template
 	if sd, ok := reader.sheets[sheet]; ok {
 		for col, w := range sd.ColumnWidths {
-			colName := ColToName(col)
 			colNum := col + 1
 			sw.SetColWidth(colNum, colNum, w)
-			_ = colName
 		}
 	}
 

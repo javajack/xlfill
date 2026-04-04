@@ -32,10 +32,14 @@ func newImageCommandFromAttrs(attrs map[string]string) (Command, error) {
 	}
 	// Parse scale values if present
 	if s := attrs["scaleX"]; s != "" {
-		fmt.Sscanf(s, "%f", &cmd.ScaleX)
+		if _, err := fmt.Sscanf(s, "%f", &cmd.ScaleX); err != nil {
+			return nil, fmt.Errorf("invalid scaleX %q: %w", s, err)
+		}
 	}
 	if s := attrs["scaleY"]; s != "" {
-		fmt.Sscanf(s, "%f", &cmd.ScaleY)
+		if _, err := fmt.Sscanf(s, "%f", &cmd.ScaleY); err != nil {
+			return nil, fmt.Errorf("invalid scaleY %q: %w", s, err)
+		}
 	}
 	return cmd, nil
 }

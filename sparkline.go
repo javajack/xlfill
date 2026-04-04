@@ -63,7 +63,7 @@ func (c *SparklineCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Tr
 	color := c.Color
 
 	// Register deferred action
-	ctx.RegisterDeferred(DeferredAction{
+	if err := ctx.RegisterDeferred(DeferredAction{
 		Name:     "sparkline",
 		Sheet:    sheet,
 		StartRow: cellRef.Row,
@@ -89,7 +89,9 @@ func (c *SparklineCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Tr
 
 			return tx.file.AddSparkline(sheet, opts)
 		},
-	})
+	}); err != nil {
+		return ZeroSize, fmt.Errorf("sparkline: %w", err)
+	}
 
 	return size, nil
 }

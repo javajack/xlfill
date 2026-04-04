@@ -89,6 +89,14 @@ func (d *DebugTracer) TraceIf(condition string, result bool) {
 	d.mu.Unlock()
 }
 
+// TraceDeferredAction logs execution of a deferred action.
+func (d *DebugTracer) TraceDeferredAction(name, sheet string, startRow, endRow int) {
+	d.mu.Lock()
+	fmt.Fprintf(d.w, "%s[deferred] %s on %s rows %d-%d\n",
+		strings.Repeat("  ", d.indent), name, sheet, startRow+1, endRow+1)
+	d.mu.Unlock()
+}
+
 // TraceDone logs processing completion.
 func (d *DebugTracer) TraceDone() {
 	elapsed := time.Since(d.startTime)

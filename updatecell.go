@@ -61,9 +61,13 @@ func (c *UpdateCellCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer T
 
 				// Apply updated value
 				if cd.Formula != "" {
-					transformer.SetFormula(targetRef, cd.Formula)
+					if err := transformer.SetFormula(targetRef, cd.Formula); err != nil {
+						return ZeroSize, fmt.Errorf("updateCell: set formula at %s: %w", targetRef, err)
+					}
 				} else if cd.Value != nil {
-					transformer.SetCellValue(targetRef, cd.Value)
+					if err := transformer.SetCellValue(targetRef, cd.Value); err != nil {
+						return ZeroSize, fmt.Errorf("updateCell: set value at %s: %w", targetRef, err)
+					}
 				}
 			}
 		}
@@ -78,9 +82,13 @@ func (c *UpdateCellCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer T
 	updater.UpdateCellData(cd, cellRef, ctx)
 
 	if cd.Formula != "" {
-		transformer.SetFormula(cellRef, cd.Formula)
+		if err := transformer.SetFormula(cellRef, cd.Formula); err != nil {
+			return ZeroSize, fmt.Errorf("updateCell: set formula at %s: %w", cellRef, err)
+		}
 	} else if cd.Value != nil {
-		transformer.SetCellValue(cellRef, cd.Value)
+		if err := transformer.SetCellValue(cellRef, cd.Value); err != nil {
+			return ZeroSize, fmt.Errorf("updateCell: set value at %s: %w", cellRef, err)
+		}
 	}
 
 	return Size{Width: 1, Height: 1}, nil

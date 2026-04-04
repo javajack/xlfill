@@ -62,7 +62,7 @@ func (c *TableCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transf
 	showLastColumn := c.ShowLastColumn == "true"
 
 	// Register deferred action
-	ctx.RegisterDeferred(DeferredAction{
+	if err := ctx.RegisterDeferred(DeferredAction{
 		Name:     "table",
 		Sheet:    sheet,
 		StartRow: startRow,
@@ -82,7 +82,9 @@ func (c *TableCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer Transf
 				ShowLastColumn:  showLastColumn,
 			})
 		},
-	})
+	}); err != nil {
+		return ZeroSize, fmt.Errorf("table: %w", err)
+	}
 
 	return size, nil
 }

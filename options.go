@@ -163,6 +163,9 @@ func WithStreaming(enabled bool) Option {
 	return func(o *Options) { o.streaming = enabled }
 }
 
+// MaxParallelism caps the maximum number of parallel goroutines to prevent resource exhaustion.
+const MaxParallelism = 256
+
 // WithParallelism sets the number of goroutines for parallel jx:each processing.
 // Only jx:each commands with direction="DOWN" and fixed-height areas (no nested
 // each/repeat) are parallelized. Other commands fall back to sequential.
@@ -171,7 +174,15 @@ func WithStreaming(enabled bool) Option {
 // When enabled, the Transformer is wrapped in a ConcurrentTransformer for thread-safe
 // writes, and each goroutine gets an independent Context clone.
 func WithParallelism(n int) Option {
-	return func(o *Options) { o.parallelism = n }
+	return func(o *Options) {
+		if n > MaxParallelism {
+			n = MaxParallelism
+		}
+		if n < 0 {
+			n = 0
+		}
+		o.parallelism = n
+	}
 }
 
 // WithFunction registers a custom template function that will be available

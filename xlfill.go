@@ -174,6 +174,9 @@ func (f *Filler) FillWriter(data map[string]any, w io.Writer) error {
 	// Execute deferred actions (e.g., jx:table, jx:chart that need final output ranges)
 	for _, action := range ctx.deferred.Actions() {
 		if action.Execute != nil {
+			if f.debug != nil {
+				f.debug.TraceDeferredAction(action.Name, action.Sheet, action.StartRow, action.EndRow)
+			}
 			if err := action.Execute(etx); err != nil {
 				return fmt.Errorf("deferred action %q: %w", action.Name, err)
 			}

@@ -50,6 +50,9 @@ func newEachCommandFromAttrs(attrs map[string]string) (Command, error) {
 	if cmd.Direction == "" {
 		cmd.Direction = "DOWN"
 	}
+	if cmd.Direction != "DOWN" && cmd.Direction != "RIGHT" {
+		return nil, fmt.Errorf("each command: invalid direction %q (must be DOWN or RIGHT)", cmd.Direction)
+	}
 	return cmd, nil
 }
 
@@ -360,7 +363,7 @@ func parseOrderBy(spec string, varName string) []orderBySpec {
 		return nil
 	}
 	parts := strings.Split(spec, ",")
-	var specs []orderBySpec
+	specs := make([]orderBySpec, 0, len(parts))
 	prefix := varName + "."
 	for _, p := range parts {
 		p = strings.TrimSpace(p)

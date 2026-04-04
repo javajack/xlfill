@@ -267,9 +267,10 @@ func AvgBy(items any, field string) float64 {
 
 // CountBy counts items where the specified field equals the given value.
 func CountBy(items any, field string, value any) int {
+	valueStr := fmt.Sprintf("%v", value)
 	var count int
 	iterateField(items, field, func(val any) {
-		if fmt.Sprintf("%v", val) == fmt.Sprintf("%v", value) {
+		if fmt.Sprintf("%v", val) == valueStr {
 			count++
 		}
 	})

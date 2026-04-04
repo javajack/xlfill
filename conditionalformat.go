@@ -70,7 +70,7 @@ func (c *ConditionalFormatCommand) ApplyAt(cellRef CellRef, ctx *Context, transf
 	iconStyle := c.IconStyle
 
 	// Register deferred action
-	ctx.RegisterDeferred(DeferredAction{
+	if err := ctx.RegisterDeferred(DeferredAction{
 		Name:     "conditionalFormat",
 		Sheet:    sheet,
 		StartRow: startRow,
@@ -147,7 +147,9 @@ func (c *ConditionalFormatCommand) ApplyAt(cellRef CellRef, ctx *Context, transf
 
 			return tx.file.SetConditionalFormat(sheet, rangeStr, opts)
 		},
-	})
+	}); err != nil {
+		return ZeroSize, fmt.Errorf("conditionalFormat: %w", err)
+	}
 
 	return size, nil
 }

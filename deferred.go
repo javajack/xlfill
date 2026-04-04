@@ -1,6 +1,12 @@
 package xlfill
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
+
+// MaxDeferredActions limits the number of deferred actions to prevent resource exhaustion.
+const MaxDeferredActions = 10_000
 
 // DeferredAction represents an action to be executed after all areas have been processed.
 // Commands like jx:table, jx:chart register deferred actions during ApplyAt because they
@@ -37,11 +43,15 @@ func NewDeferredRegistry() *DeferredRegistry {
 	return &DeferredRegistry{}
 }
 
-// Add registers a deferred action.
-func (r *DeferredRegistry) Add(action DeferredAction) {
+// Add registers a deferred action. Returns an error if the limit is exceeded.
+func (r *DeferredRegistry) Add(action DeferredAction) error {
 	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.actions) >= MaxDeferredActions {
+		return fmt.Errorf("deferred action limit (%d) exceeded", MaxDeferredActions)
+	}
 	r.actions = append(r.actions, action)
-	r.mu.Unlock()
+	return nil
 }
 
 // Actions returns all registered deferred actions in registration order.

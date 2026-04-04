@@ -43,6 +43,11 @@ func newDataValidationCommandFromAttrs(attrs map[string]string) (Command, error)
 	if cmd.AllowBlank == "" {
 		cmd.AllowBlank = "true"
 	}
+	// Validate type at creation time (fail fast)
+	validTypes := map[string]bool{"list": true, "integer": true, "decimal": true, "date": true, "custom": true}
+	if !validTypes[cmd.ValidationType] {
+		return nil, fmt.Errorf("unsupported data validation type: %q", cmd.ValidationType)
+	}
 	return cmd, nil
 }
 
@@ -75,7 +80,7 @@ func (c *DataValidationCommand) ApplyAt(cellRef CellRef, ctx *Context, transform
 	errorMsg := c.ErrorMsg
 
 	// Register deferred action
-	ctx.RegisterDeferred(DeferredAction{
+	if err := ctx.RegisterDeferred(DeferredAction{
 		Name:     "dataValidation",
 		Sheet:    sheet,
 		StartRow: startRow,
@@ -119,7 +124,9 @@ func (c *DataValidationCommand) ApplyAt(cellRef CellRef, ctx *Context, transform
 
 			return tx.file.AddDataValidation(sheet, dv)
 		},
-	})
+	}); err != nil {
+		return ZeroSize, fmt.Errorf("dataValidation: %w", err)
+	}
 
 	return size, nil
 }

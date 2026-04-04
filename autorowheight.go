@@ -1,5 +1,7 @@
 package xlfill
 
+import "fmt"
+
 // AutoRowHeightCommand implements jx:autoRowHeight to auto-fit row heights after content is written.
 type AutoRowHeightCommand struct {
 	Area *Area
@@ -25,7 +27,9 @@ func (c *AutoRowHeightCommand) ApplyAt(cellRef CellRef, ctx *Context, tx Transfo
 
 	// Set each output row to auto-height by setting height to -1
 	for row := 0; row < size.Height; row++ {
-		tx.SetRowHeight(cellRef.Sheet, cellRef.Row+row, -1)
+		if err := tx.SetRowHeight(cellRef.Sheet, cellRef.Row+row, -1); err != nil {
+			return size, fmt.Errorf("auto row height at row %d: %w", cellRef.Row+row, err)
+		}
 	}
 
 	return size, nil

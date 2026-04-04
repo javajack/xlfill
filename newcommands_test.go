@@ -1847,7 +1847,7 @@ func TestIncludeCommandApplyAtInvalidTemplate(t *testing.T) {
 	cellRef := NewCellRef("Sheet1", 0, 0)
 	_, err = cmd.ApplyAt(cellRef, ctx, tx)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "include: open")
+	assert.Contains(t, err.Error(), "include: absolute paths not allowed")
 }
 
 func TestIncludeCommandApplyAtInvalidArea(t *testing.T) {

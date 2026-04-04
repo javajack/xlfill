@@ -3,6 +3,7 @@ package xlfill
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // ErrorKind categorizes xlfill errors for programmatic handling.
@@ -96,22 +97,29 @@ func (w Warning) String() string {
 
 // WarningCollector accumulates warnings during processing.
 type WarningCollector struct {
+	mu       sync.Mutex
 	warnings []Warning
 }
 
 // Add records a warning.
 func (wc *WarningCollector) Add(cell CellRef, message string) {
+	wc.mu.Lock()
 	wc.warnings = append(wc.warnings, Warning{Cell: cell, Message: message})
+	wc.mu.Unlock()
 }
 
 // Warnings returns all collected warnings.
 func (wc *WarningCollector) Warnings() []Warning {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
 	return wc.warnings
 }
 
 // Reset clears all warnings.
 func (wc *WarningCollector) Reset() {
+	wc.mu.Lock()
 	wc.warnings = wc.warnings[:0]
+	wc.mu.Unlock()
 }
 
 // levenshtein computes the edit distance between two strings.

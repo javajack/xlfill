@@ -56,7 +56,7 @@ func (c *DefinedNameCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer 
 	scope := c.Scope
 
 	// Register deferred action
-	ctx.RegisterDeferred(DeferredAction{
+	if err := ctx.RegisterDeferred(DeferredAction{
 		Name:     "definedName",
 		Sheet:    sheet,
 		StartRow: startRow,
@@ -76,7 +76,9 @@ func (c *DefinedNameCommand) ApplyAt(cellRef CellRef, ctx *Context, transformer 
 
 			return tx.file.SetDefinedName(dn)
 		},
-	})
+	}); err != nil {
+		return ZeroSize, fmt.Errorf("definedName: %w", err)
+	}
 
 	return size, nil
 }
