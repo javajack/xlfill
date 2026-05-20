@@ -125,7 +125,7 @@ Cell A9 comment:
 A9: ${item.Name}
 B9: ${item.Description}
 C9: ${item.Qty}
-D9: ${formatNumber(item.UnitPrice, "#,##0.00")}
+D9: ${formatNumber(item.UnitPrice, 2)}
 E9: =C9*D9
 ```
 
@@ -178,14 +178,14 @@ If there are 3 items, 7 blank rows are added. If there are 10 or more items, no 
 ## Currency formatting with formatNumber
 
 ```
-${formatNumber(item.UnitPrice, "#,##0.00")}
+${formatNumber(item.UnitPrice, 2)}
 ```
 
 Or set the Excel number format on the cell in the template (Format Cells → Number → Currency). XLFill preserves it. Either approach works.
 
 > **Pro tip:** For multi-currency invoices, use the number format in the template for the display format, and pass the currency symbol in the data:
 > ```
-> ${item.CurrencySymbol}${formatNumber(item.UnitPrice, "#,##0.00")}
+> ${item.CurrencySymbol}${formatNumber(item.UnitPrice, 2)}
 > ```
 
 ## Page breaks for batch invoices

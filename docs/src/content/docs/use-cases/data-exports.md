@@ -186,7 +186,7 @@ ${formatDate(o.CreatedAt, "2006-01-02")}
 Same approach — Excel number format or `formatNumber`:
 
 ```
-${formatNumber(o.Amount, "#,##0.00")}
+${formatNumber(o.Amount, 2)}
 ```
 
 ### Conditional formatting on status

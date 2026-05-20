@@ -21,8 +21,10 @@ type ConditionalFormatCommand struct {
 	Area       *Area
 }
 
-func (c *ConditionalFormatCommand) Name() string { return "conditionalFormat" }
-func (c *ConditionalFormatCommand) Reset()       {}
+func (c *ConditionalFormatCommand) Name() string    { return "conditionalFormat" }
+func (c *ConditionalFormatCommand) Reset()          {}
+func (c *ConditionalFormatCommand) GetArea() *Area  { return c.Area }
+func (c *ConditionalFormatCommand) SetArea(a *Area) { c.Area = a }
 
 // newConditionalFormatCommandFromAttrs creates a ConditionalFormatCommand from parsed attributes.
 func newConditionalFormatCommandFromAttrs(attrs map[string]string) (Command, error) {

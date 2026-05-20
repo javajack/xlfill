@@ -71,7 +71,7 @@ func TestContextDifferentialMapWithNestedLoops(t *testing.T) {
 	ctx.setRunVar("emp", "Bob")
 	m = ctx.ToMap()
 	assert.Equal(t, "Engineering", m["dept"]) // unchanged
-	assert.Equal(t, "Bob", m["emp"])           // updated
+	assert.Equal(t, "Bob", m["emp"])          // updated
 
 	// Outer loop iteration changes "dept", removes "emp"
 	ctx.removeRunVar("emp")

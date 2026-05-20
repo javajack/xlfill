@@ -633,7 +633,9 @@ func TestWithStreamingSheets(t *testing.T) {
 }
 
 func TestWithStreamingSheets_NonMatchingSheet(t *testing.T) {
-	// When streaming sheets don't match the target sheet, it should fall back to normal mode
+	// When the named streaming sheet doesn't exist, the sheet is skipped with
+	// a warning and the existing sheet is processed through the non-streaming
+	// path. Output must still be correct.
 	f := excelize.NewFile()
 	sheet := "Sheet1"
 	f.SetCellValue(sheet, "A1", "${title}")
@@ -665,6 +667,192 @@ func TestWithStreamingSheets_NonMatchingSheet(t *testing.T) {
 	val, _ := out.GetCellValue(sheet, "A1")
 	if val != "Normal" {
 		t.Errorf("expected A1=Normal, got %q", val)
+	}
+}
+
+// TestWithStreamingSheets_SecondSheet verifies that a sheet other than Sheet1
+// can be streamed — previously a single-sheet bug made only sheets[0]
+// eligible for streaming.
+func TestWithStreamingSheets_SecondSheet(t *testing.T) {
+	f := excelize.NewFile()
+	// Sheet1 stays as the default sheet; we add a second sheet and stream it.
+	f.SetCellValue("Sheet1", "A1", "static")
+	_, err := f.NewSheet("Report")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.SetCellValue("Report", "A1", "Header")
+	f.SetCellValue("Report", "A2", "${e.name}")
+	f.AddComment("Report", excelize.Comment{
+		Cell: "A1", Author: "test", Text: `jx:area(lastCell="A2")`,
+	})
+	f.AddComment("Report", excelize.Comment{
+		Cell: "A2", Author: "test",
+		Text: `jx:each(items="employees" var="e" lastCell="A2")`,
+	})
+
+	tmpDir := t.TempDir()
+	tmplPath := filepath.Join(tmpDir, "second_sheet_tmpl.xlsx")
+	if err := f.SaveAs(tmplPath); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	outPath := filepath.Join(tmpDir, "second_sheet_out.xlsx")
+	err = xlfill.Fill(tmplPath, outPath, map[string]any{
+		"employees": []any{
+			map[string]any{"name": "Alice"},
+			map[string]any{"name": "Bob"},
+		},
+	}, xlfill.WithStreamingSheets("Report"))
+	if err != nil {
+		t.Fatalf("Fill: %v", err)
+	}
+
+	out, err := excelize.OpenFile(outPath)
+	if err != nil {
+		t.Fatalf("open output: %v", err)
+	}
+	defer out.Close()
+
+	v2, _ := out.GetCellValue("Report", "A2")
+	if v2 != "Alice" {
+		t.Errorf("expected Report!A2=Alice, got %q", v2)
+	}
+	v3, _ := out.GetCellValue("Report", "A3")
+	if v3 != "Bob" {
+		t.Errorf("expected Report!A3=Bob, got %q", v3)
+	}
+}
+
+// TestWithStreamingSheets_HyperlinkDroppedAsWarning verifies that a hyperlink
+// in a streamed sheet is dropped (display text written, link omitted) and
+// the drop is surfaced as a non-fatal warning that callers can inspect.
+func TestWithStreamingSheets_HyperlinkDroppedAsWarning(t *testing.T) {
+	f := excelize.NewFile()
+	sheet := "Sheet1"
+	f.SetCellValue(sheet, "A1", `${hyperlink(e.url, e.name)}`)
+	f.AddComment(sheet, excelize.Comment{
+		Cell: "A1", Author: "test", Text: `jx:area(lastCell="A1")`,
+	})
+
+	tmpDir := t.TempDir()
+	tmplPath := filepath.Join(tmpDir, "hyperlink_stream.xlsx")
+	if err := f.SaveAs(tmplPath); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	filler := xlfill.NewFiller(
+		xlfill.WithTemplate(tmplPath),
+		xlfill.WithStreaming(true),
+	)
+	data := map[string]any{
+		"e": map[string]any{"url": "https://example.com", "name": "Click me"},
+	}
+	var buf bytes.Buffer
+	if err := filler.FillWriter(data, &buf); err != nil {
+		t.Fatalf("FillWriter: %v", err)
+	}
+
+	warnings := filler.Warnings()
+	if len(warnings) == 0 {
+		t.Fatalf("expected hyperlink drop warning, got none")
+	}
+	found := false
+	for _, w := range warnings {
+		if strings.Contains(w.Message, "hyperlink dropped") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("warnings did not include hyperlink drop notice: %v", warnings)
+	}
+
+	out, err := excelize.OpenReader(&buf)
+	if err != nil {
+		t.Fatalf("open output: %v", err)
+	}
+	defer out.Close()
+
+	// Display text should land in the cell even though the link itself was dropped.
+	v, _ := out.GetCellValue(sheet, "A1")
+	if v != "Click me" {
+		t.Errorf("expected display text in cell, got %q", v)
+	}
+}
+
+// TestWithStreamingSheets_MultipleSheets exercises streaming two sheets at
+// once and confirms both stream correctly.
+func TestWithStreamingSheets_MultipleSheets(t *testing.T) {
+	f := excelize.NewFile()
+	f.SetCellValue("Sheet1", "A1", "Header A")
+	f.SetCellValue("Sheet1", "A2", "${a.name}")
+	f.AddComment("Sheet1", excelize.Comment{
+		Cell: "A1", Author: "test", Text: `jx:area(lastCell="A2")`,
+	})
+	f.AddComment("Sheet1", excelize.Comment{
+		Cell: "A2", Author: "test",
+		Text: `jx:each(items="listA" var="a" lastCell="A2")`,
+	})
+	_, err := f.NewSheet("Sheet2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.SetCellValue("Sheet2", "A1", "Header B")
+	f.SetCellValue("Sheet2", "A2", "${b.value}")
+	f.AddComment("Sheet2", excelize.Comment{
+		Cell: "A1", Author: "test", Text: `jx:area(lastCell="A2")`,
+	})
+	f.AddComment("Sheet2", excelize.Comment{
+		Cell: "A2", Author: "test",
+		Text: `jx:each(items="listB" var="b" lastCell="A2")`,
+	})
+
+	tmpDir := t.TempDir()
+	tmplPath := filepath.Join(tmpDir, "multi_tmpl.xlsx")
+	if err := f.SaveAs(tmplPath); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	outPath := filepath.Join(tmpDir, "multi_out.xlsx")
+	err = xlfill.Fill(tmplPath, outPath, map[string]any{
+		"listA": []any{
+			map[string]any{"name": "X"},
+			map[string]any{"name": "Y"},
+		},
+		"listB": []any{
+			map[string]any{"value": 1},
+			map[string]any{"value": 2},
+		},
+	}, xlfill.WithStreamingSheets("Sheet1", "Sheet2"))
+	if err != nil {
+		t.Fatalf("Fill: %v", err)
+	}
+
+	out, err := excelize.OpenFile(outPath)
+	if err != nil {
+		t.Fatalf("open output: %v", err)
+	}
+	defer out.Close()
+
+	a2, _ := out.GetCellValue("Sheet1", "A2")
+	if a2 != "X" {
+		t.Errorf("expected Sheet1!A2=X, got %q", a2)
+	}
+	a3, _ := out.GetCellValue("Sheet1", "A3")
+	if a3 != "Y" {
+		t.Errorf("expected Sheet1!A3=Y, got %q", a3)
+	}
+	b2, _ := out.GetCellValue("Sheet2", "A2")
+	if b2 != "1" {
+		t.Errorf("expected Sheet2!A2=1, got %q", b2)
+	}
+	b3, _ := out.GetCellValue("Sheet2", "A3")
+	if b3 != "2" {
+		t.Errorf("expected Sheet2!A3=2, got %q", b3)
 	}
 }
 
@@ -746,8 +934,8 @@ func TestWithDocumentProperties_EmptyMap(t *testing.T) {
 type mockColumnsError struct{}
 
 func (m *mockColumnsError) Columns() ([]string, error) { return nil, fmt.Errorf("columns error") }
-func (m *mockColumnsError) Next() bool                  { return false }
-func (m *mockColumnsError) Scan(dest ...any) error       { return nil }
+func (m *mockColumnsError) Next() bool                 { return false }
+func (m *mockColumnsError) Scan(dest ...any) error     { return nil }
 
 func TestSQLRowsToData_ColumnsError(t *testing.T) {
 	_, err := xlfill.SQLRowsToData(&mockColumnsError{})

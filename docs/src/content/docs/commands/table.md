@@ -76,6 +76,13 @@ Pick a style in Excel's table design ribbon, note its name, use it in the `style
 
 `jx:table` uses deferred execution. The table definition is collected during processing and applied after all rows are written — ensuring the table range covers the correct number of output rows.
 
+## Common pitfalls
+
+- **Table names must be unique workbook-wide.** Two `jx:table` commands with the same `name` produce a file Excel refuses to open.
+- **No spaces in `name`.** Excel rejects table names with spaces. Use `EmployeeTable` or `employee_table`, not `Employee Table`.
+- **Tables can't span sheets.** A single `jx:table` covers one rectangular range on one sheet. Multi-sheet reports need a separate table per sheet.
+- **Empty tables aren't allowed.** If your `jx:each` produces zero rows, the table command has no rows to wrap. Combine with `jx:if` to skip table creation when the data set is empty.
+
 ## What's next?
 
 Add visual data indicators with conditional formatting:

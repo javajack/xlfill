@@ -15,8 +15,10 @@ type UpdateCellCommand struct {
 	Area    *Area
 }
 
-func (c *UpdateCellCommand) Name() string { return "updateCell" }
-func (c *UpdateCellCommand) Reset()       {}
+func (c *UpdateCellCommand) Name() string    { return "updateCell" }
+func (c *UpdateCellCommand) Reset()          {}
+func (c *UpdateCellCommand) GetArea() *Area  { return c.Area }
+func (c *UpdateCellCommand) SetArea(a *Area) { c.Area = a }
 
 // newUpdateCellCommandFromAttrs creates an UpdateCellCommand from parsed attributes.
 func newUpdateCellCommandFromAttrs(attrs map[string]string) (Command, error) {

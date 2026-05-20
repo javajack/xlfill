@@ -403,7 +403,7 @@ Then use in templates: `jx:highlight(color="yellow" lastCell="C1")`
 
 ## Built-in Functions
 
-XLFill ships with 18 built-in functions available in all `${...}` expressions:
+XLFill ships with 16 built-in functions available in all `${...}` expressions:
 
 | Function | Example | Description |
 |----------|---------|-------------|
@@ -413,7 +413,7 @@ XLFill ships with 18 built-in functions available in all `${...}` expressions:
 | `lower(s)` | `${lower(e.Email)}` | Convert to lowercase |
 | `title(s)` | `${title(e.Name)}` | Convert to title case |
 | `join(sep, items)` | `${join(", ", e.Skills)}` | Join a slice into a string |
-| `formatNumber(val, fmt)` | `${formatNumber(e.Salary, "#,##0.00")}` | Format a number |
+| `formatNumber(val, decimals)` | `${formatNumber(e.Salary, 2)}` | Format a number with thousands separators |
 | `formatDate(val, layout)` | `${formatDate(e.Hire, "2006-01-02")}` | Format a date/time |
 | `coalesce(values...)` | `${coalesce(e.Nick, e.Name, "N/A")}` | First non-empty value |
 | `ifEmpty(val, fallback)` | `${ifEmpty(e.Dept, "Unassigned")}` | Fallback for empty values |

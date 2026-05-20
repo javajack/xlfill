@@ -61,9 +61,9 @@ type CellData struct {
 	DefaultValue    string          // default value for removed formula refs (from jx:params)
 
 	// Tracking for formula processing
-	TargetPositions  []CellRef  // where this cell was copied to during transformation
-	TargetParentArea []AreaRef  // parent area of each target position
-	EvalFormulas     []string   // evaluated formulas for each target position
+	TargetPositions  []CellRef // where this cell was copied to during transformation
+	TargetParentArea []AreaRef // parent area of each target position
+	EvalFormulas     []string  // evaluated formulas for each target position
 
 	// Style preservation
 	StyleID int // cached style ID for restoring after value write

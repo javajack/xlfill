@@ -49,6 +49,13 @@ Each row gets its height adjusted based on its content.
 
 That's every command in XLFill. You now know the full template language. For most reports, you'll use `jx:area` + `jx:each` and occasionally `jx:if`. The rest are there when you need them.
 
+## Common pitfalls
+
+- **Cells need "wrap text" enabled in the template.** Without it, long text spills horizontally and the row stays one line tall — auto-height has nothing to expand.
+- **Excel auto-fit isn't deterministic across viewers.** LibreOffice and Google Sheets may render different heights for the same value. Test in the target viewer if it matters.
+- **Doesn't shrink rows that were tall in the template.** Like `jx:autoColWidth`, the template height is the floor.
+- **Streaming mode silently no-ops.** StreamWriter doesn't let xlfill change row heights after writing. Use sequential mode if you need auto-fit on huge data.
+
 ## Try it
 
 Download the runnable example: **template** [t17.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t17.xlsx) | **output** [17_autorowheight.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/17_autorowheight.xlsx) | [code snippet](/xlfill/reference/examples/#17-auto-row-height)

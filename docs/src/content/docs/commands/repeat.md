@@ -69,6 +69,13 @@ data := map[string]any{
 }
 ```
 
+## Common pitfalls
+
+- **`count` is capped at 1,000,000.** Passing a larger value returns an error to prevent runaway memory use.
+- **Zero count = no rows, no error.** Useful for padding (`max(0, 10 - len(items))`); confusing if you expected an error for empty input.
+- **`var` is optional.** If you don't reference the index inside the area, you don't need to declare it.
+- **Use `jx:each` if you have data.** `jx:repeat` is for *N identical things*; iterating over a real list is what `jx:each` is for.
+
 ## What's next?
 
 For data-driven loops, see the workhorse command:

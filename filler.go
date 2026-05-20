@@ -278,86 +278,14 @@ func (f *Filler) BuildAreas(tx Transformer) ([]*Area, error) {
 	return rootAreas, nil
 }
 
-// propagateListeners sets listeners on an area and all its child command areas recursively.
+// propagateListeners sets listeners on an area and all its child command areas
+// recursively. Walks every area returned by commandAreas (which respects the
+// AreaHolder / MultiAreaHolder interfaces from area_holder.go).
 func (f *Filler) propagateListeners(area *Area) {
 	area.Listeners = f.opts.areaListeners
 	for _, b := range area.Bindings {
-		switch c := b.Command.(type) {
-		case *EachCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *IfCommand:
-			if c.IfArea != nil {
-				f.propagateListeners(c.IfArea)
-			}
-			if c.ElseArea != nil {
-				f.propagateListeners(c.ElseArea)
-			}
-		case *GridCommand:
-			if c.BodyArea != nil {
-				f.propagateListeners(c.BodyArea)
-			}
-		case *UpdateCellCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *AutoRowHeightCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *RepeatCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *DataValidationCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *TableCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *ConditionalFormatCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *GroupCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *ChartCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *DefinedNameCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *SparklineCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *PageBreakCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *AutoColWidthCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *FreezePanesCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *ProtectCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
-		case *IncludeCommand:
-			if c.Area != nil {
-				f.propagateListeners(c.Area)
-			}
+		for _, child := range commandAreas(b.Command) {
+			f.propagateListeners(child)
 		}
 	}
 }
@@ -389,45 +317,11 @@ func (f *Filler) propagateStyleListeners(area *Area) {
 	}
 }
 
-// getCommandArea returns the inner area of a command, or nil if the command type has no area.
+// getCommandArea returns the primary inner area of a command via the
+// AreaHolder interface (area_holder.go), or nil if the command holds no area.
 func getCommandArea(cmd Command) *Area {
-	switch c := cmd.(type) {
-	case *EachCommand:
-		return c.Area
-	case *IfCommand:
-		return c.IfArea
-	case *UpdateCellCommand:
-		return c.Area
-	case *GridCommand:
-		return c.BodyArea
-	case *AutoRowHeightCommand:
-		return c.Area
-	case *RepeatCommand:
-		return c.Area
-	case *DataValidationCommand:
-		return c.Area
-	case *TableCommand:
-		return c.Area
-	case *ConditionalFormatCommand:
-		return c.Area
-	case *GroupCommand:
-		return c.Area
-	case *ChartCommand:
-		return c.Area
-	case *DefinedNameCommand:
-		return c.Area
-	case *SparklineCommand:
-		return c.Area
-	case *PageBreakCommand:
-		return c.Area
-	case *AutoColWidthCommand:
-		return c.Area
-	case *FreezePanesCommand:
-		return c.Area
-	case *ProtectCommand:
-		return c.Area
-	case *IncludeCommand:
-		return c.Area
+	if h, ok := cmd.(AreaHolder); ok {
+		return h.GetArea()
 	}
 	return nil
 }
@@ -484,45 +378,11 @@ func (f *Filler) buildIfElseArea(ifCmd *IfCommand, areasAttr string, cmdStart Ce
 	return nil
 }
 
-// attachArea attaches an inner area to a command based on its type.
+// attachArea attaches an inner area to a command via the AreaHolder interface
+// (area_holder.go). Commands that don't hold an area are silently ignored.
 func attachArea(cmd Command, area *Area) {
-	switch c := cmd.(type) {
-	case *EachCommand:
-		c.Area = area
-	case *IfCommand:
-		c.IfArea = area
-	case *UpdateCellCommand:
-		c.Area = area
-	case *GridCommand:
-		c.BodyArea = area
-	case *AutoRowHeightCommand:
-		c.Area = area
-	case *RepeatCommand:
-		c.Area = area
-	case *DataValidationCommand:
-		c.Area = area
-	case *TableCommand:
-		c.Area = area
-	case *ConditionalFormatCommand:
-		c.Area = area
-	case *GroupCommand:
-		c.Area = area
-	case *ChartCommand:
-		c.Area = area
-	case *DefinedNameCommand:
-		c.Area = area
-	case *SparklineCommand:
-		c.Area = area
-	case *PageBreakCommand:
-		c.Area = area
-	case *AutoColWidthCommand:
-		c.Area = area
-	case *FreezePanesCommand:
-		c.Area = area
-	case *ProtectCommand:
-		c.Area = area
-	case *IncludeCommand:
-		c.Area = area
+	if h, ok := cmd.(AreaHolder); ok {
+		h.SetArea(area)
 	}
 }
 

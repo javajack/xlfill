@@ -20,22 +20,29 @@ type ExcelizeTransformer struct {
 	commentCellCount int
 	formulaCellCount int
 
-	// Data validations read from template, keyed by sheet name
+	// Data validations read from template, keyed by sheet name.
 	validations map[string][]*excelize.DataValidation
+
+	// validationIndex[sheet][CellRef] -> the data validations covering that
+	// cell. Built once at load time so preserveDataValidation is O(1) per
+	// transform instead of O(validations × cells).
+	validationIndex map[string]map[CellRef][]*excelize.DataValidation
 }
 
 // NewExcelizeTransformer creates a Transformer from an excelize file.
 func NewExcelizeTransformer(f *excelize.File) (*ExcelizeTransformer, error) {
 	tx := &ExcelizeTransformer{
-		file:        f,
-		sheets:      make(map[string]*SheetData),
-		styleCache:  make(map[string]int),
-		targetRefs:  make(map[CellRef][]CellRef),
-		validations: make(map[string][]*excelize.DataValidation),
+		file:            f,
+		sheets:          make(map[string]*SheetData),
+		styleCache:      make(map[string]int),
+		targetRefs:      make(map[CellRef][]CellRef),
+		validations:     make(map[string][]*excelize.DataValidation),
+		validationIndex: make(map[string]map[CellRef][]*excelize.DataValidation),
 	}
 	if err := tx.readAllCellData(); err != nil {
 		return nil, fmt.Errorf("read template data: %w", err)
 	}
+	tx.buildValidationIndex()
 	return tx, nil
 }
 
@@ -311,21 +318,74 @@ func (tx *ExcelizeTransformer) Transform(src, target CellRef, ctx *Context, upda
 	return nil
 }
 
-// preserveDataValidation checks if the source cell is covered by any data validation
-// rule and applies a copy of the validation to the target cell.
+// preserveDataValidation checks if the source cell is covered by any data
+// validation rule and applies a copy of the validation to the target cell.
+// Lookup is O(1) via tx.validationIndex (built once at load time).
 func (tx *ExcelizeTransformer) preserveDataValidation(src, target CellRef, targetSheet string) {
-	dvs := tx.validations[src.Sheet]
-	if len(dvs) == 0 {
+	sheetIdx, ok := tx.validationIndex[src.Sheet]
+	if !ok {
 		return
 	}
-	srcCell := src.CellName()
+	dvs := sheetIdx[src]
 	for _, dv := range dvs {
-		if cellInSqref(srcCell, dv.Sqref) {
-			newDV := *dv // shallow copy
-			newDV.Sqref = target.CellName()
-			tx.file.AddDataValidation(targetSheet, &newDV)
+		newDV := *dv // shallow copy
+		newDV.Sqref = target.CellName()
+		tx.file.AddDataValidation(targetSheet, &newDV)
+	}
+}
+
+// buildValidationIndex pre-computes a cell→validations map for every sheet.
+// Called once after readAllCellData. For a template with N validations whose
+// sqrefs cover M cells in total, this builds the index in O(M) and turns
+// every subsequent preserveDataValidation call into O(1).
+func (tx *ExcelizeTransformer) buildValidationIndex() {
+	for sheet, dvs := range tx.validations {
+		sheetIdx := make(map[CellRef][]*excelize.DataValidation)
+		for _, dv := range dvs {
+			for _, ref := range expandSqref(sheet, dv.Sqref) {
+				sheetIdx[ref] = append(sheetIdx[ref], dv)
+			}
+		}
+		tx.validationIndex[sheet] = sheetIdx
+	}
+}
+
+// expandSqref expands an Excel sqref string (e.g. "A2:A5 B2:B5" or "A2")
+// into the list of individual cell references it covers.
+func expandSqref(sheet, sqref string) []CellRef {
+	var out []CellRef
+	for _, part := range strings.Fields(sqref) {
+		part = strings.ReplaceAll(part, "$", "")
+		if strings.Contains(part, ":") {
+			rangeParts := strings.SplitN(part, ":", 2)
+			if len(rangeParts) != 2 {
+				continue
+			}
+			tlCol, tlRow, err1 := parseCellName(rangeParts[0])
+			brCol, brRow, err2 := parseCellName(rangeParts[1])
+			if err1 != nil || err2 != nil {
+				continue
+			}
+			if tlCol > brCol {
+				tlCol, brCol = brCol, tlCol
+			}
+			if tlRow > brRow {
+				tlRow, brRow = brRow, tlRow
+			}
+			for r := tlRow; r <= brRow; r++ {
+				for c := tlCol; c <= brCol; c++ {
+					out = append(out, CellRef{Sheet: sheet, Row: r, Col: c})
+				}
+			}
+		} else {
+			col, row, err := parseCellName(part)
+			if err != nil {
+				continue
+			}
+			out = append(out, CellRef{Sheet: sheet, Row: row, Col: col})
 		}
 	}
+	return out
 }
 
 // cellInSqref returns true if cellName (e.g. "A2") is covered by the sqref string.

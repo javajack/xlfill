@@ -181,9 +181,9 @@ func TestIssueB122_WideCellRefReplacement(t *testing.T) {
 
 	// Template: each row with data in column AL (38) and AM (39)
 	// Column AL = col index 37, AM = col index 38 (0-based)
-	f.SetCellValue(sheet, cellName(2, 37), "${p.Merkmal}")   // AL2
-	f.SetCellValue(sheet, cellName(2, 38), "${p.Merkmal}")   // AM2
-	f.SetCellFormula(sheet, cellName(2, 0), `AL2`)           // A2 references AL2
+	f.SetCellValue(sheet, cellName(2, 37), "${p.Merkmal}") // AL2
+	f.SetCellValue(sheet, cellName(2, 38), "${p.Merkmal}") // AM2
+	f.SetCellFormula(sheet, cellName(2, 0), `AL2`)         // A2 references AL2
 
 	f.AddComment(sheet, excelize.Comment{
 		Cell: "A1", Author: "xlfill",

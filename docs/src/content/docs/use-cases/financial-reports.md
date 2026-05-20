@@ -151,7 +151,7 @@ Cell E2 comment:
   jx:conditionalFormat(lastCell="E2" type="colorScale"
                         minColor="FF0000" midColor="FFFF00" maxColor="00FF00")
 
-Cell E2: =${formatNumber((B2-C2)/C2, "0.0%")}
+Cell E2: ${formatNumber((B2-C2)/C2*100, 1) + "%"}
 ```
 
 Red for negative variances, yellow for near-zero, green for positive. The entire variance column becomes a heat map.

@@ -25,8 +25,10 @@ type EachCommand struct {
 	MultiSheet string // sheet names variable
 }
 
-func (c *EachCommand) Name() string { return "each" }
-func (c *EachCommand) Reset()       {}
+func (c *EachCommand) Name() string    { return "each" }
+func (c *EachCommand) Reset()          {}
+func (c *EachCommand) GetArea() *Area  { return c.Area }
+func (c *EachCommand) SetArea(a *Area) { c.Area = a }
 
 // newEachCommandFromAttrs creates an EachCommand from parsed attributes.
 func newEachCommandFromAttrs(attrs map[string]string) (Command, error) {

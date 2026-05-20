@@ -197,6 +197,7 @@ export default defineConfig({
           items: [
             { label: "Why XLFill?", slug: "guides/why-xlfill" },
             { label: "Getting Started", slug: "guides/getting-started" },
+            { label: "Beginner Tutorial", slug: "guides/beginner-tutorial" },
             { label: "How Templates Work", slug: "guides/how-templates-work" },
           ],
         },

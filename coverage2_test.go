@@ -756,10 +756,10 @@ func TestCommandNames(t *testing.T) {
 }
 
 // =============================================================================
-// clearTemplateCells — the no-op function (ensures it's called without panic)
+// clearTemplateCells — direct unit test of the area-walk clearing pass
 // =============================================================================
 
-func TestClearTemplateCells_NoOp(t *testing.T) {
+func TestClearTemplateCells_Direct(t *testing.T) {
 	f := excelize.NewFile()
 	sheet := "Sheet1"
 	f.SetCellValue(sheet, "A1", "${expr}")
@@ -771,7 +771,17 @@ func TestClearTemplateCells_NoOp(t *testing.T) {
 	area := NewArea(NewCellRef(sheet, 0, 0), Size{Width: 1, Height: 1}, tx)
 	ctx := NewContext(nil)
 
-	// Should not panic
+	// Calling clearTemplateCells when no targets were recorded should clear A1.
+	area.clearTemplateCells(ctx)
+
+	v, _ := f.GetCellValue(sheet, "A1")
+	assert.Equal(t, "", v, "untransformed template cell cleared")
+}
+
+func TestClearTemplateCells_NilTransformer(t *testing.T) {
+	area := &Area{StartCell: NewCellRef("Sheet1", 0, 0), AreaSize: Size{Width: 1, Height: 1}}
+	ctx := NewContext(nil)
+	// Should not panic when transformer is nil
 	area.clearTemplateCells(ctx)
 }
 
@@ -1257,8 +1267,8 @@ type customTestCmd struct {
 	called *bool
 }
 
-func (c *customTestCmd) Name() string                                              { return "custom" }
-func (c *customTestCmd) Reset()                                                    {}
+func (c *customTestCmd) Name() string { return "custom" }
+func (c *customTestCmd) Reset()       {}
 func (c *customTestCmd) ApplyAt(_ CellRef, _ *Context, _ Transformer) (Size, error) {
 	*c.called = true
 	return Size{Width: 1, Height: 1}, nil

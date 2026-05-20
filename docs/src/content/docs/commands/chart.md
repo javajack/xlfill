@@ -76,6 +76,13 @@ The chart is anchored to the cell containing the command and extends to `lastCel
 
 `jx:chart` uses deferred execution. Charts are defined during processing and created after all data rows are written. This is essential because the chart's data ranges must reference the final output rows, not the template rows.
 
+## Common pitfalls
+
+- **`catRange` and `valRange` are template-relative.** Write them for the *one-iteration* template (e.g. `A2:A2`); XLFill expands them after the loop runs. Hand-writing the expanded range like `A2:A100` confuses the engine.
+- **Pie charts allow only one series.** Multiple `valRange` values on a pie chart cause Excel to ignore the extras.
+- **Chart placement doesn't shift with row expansion.** The chart is anchored where you put the command. If your data table grows past where the chart starts, they'll overlap. Place charts to the right or far below.
+- **`type` typos fail silently in older Excel.** Stick to the documented type names: `bar`, `col`, `line`, `pie`, `doughnut`, `area`, `scatter`, `radar`.
+
 ## What's next?
 
 Add compact in-cell visualizations with sparklines:

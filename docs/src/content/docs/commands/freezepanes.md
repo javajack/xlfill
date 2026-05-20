@@ -52,6 +52,13 @@ Both the top row and left column are frozen. Users can scroll right to see more 
 
 You can freeze panes directly in Excel when designing your template. But if your template sheet gets copied (via `jx:each` with `multisheet`), or if the output has a different structure than the template, the freeze position might be wrong. `jx:freezePanes` applies the freeze to the output, ensuring it's correct regardless of template transformations.
 
+## Common pitfalls
+
+- **`row` and `col` count *frozen* rows/columns, not the freeze line position.** `row="1"` freezes row 1; the user can scroll rows 2+. `row="2"` freezes rows 1 *and* 2.
+- **Both default to 0.** Setting only `row="1"` freezes the top row only (no column freeze) — that's usually what you want.
+- **Multisheet templates need it per sheet.** Apply on each generated sheet (typically the template, since it gets copied).
+- **Existing freeze panes on the template are overwritten.** If your template already has a freeze, `jx:freezePanes` replaces it with the engine's settings.
+
 ## What's next?
 
 Protect sheets from unintended edits:

@@ -1,10 +1,10 @@
 package xlfill
 
 import (
+	"bytes"
 	"image"
 	"image/color"
 	"image/png"
-	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

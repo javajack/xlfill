@@ -34,8 +34,10 @@ type IncludeCommand struct {
 	Area         *Area
 }
 
-func (c *IncludeCommand) Name() string { return "include" }
-func (c *IncludeCommand) Reset()       {}
+func (c *IncludeCommand) Name() string    { return "include" }
+func (c *IncludeCommand) Reset()          {}
+func (c *IncludeCommand) GetArea() *Area  { return c.Area }
+func (c *IncludeCommand) SetArea(a *Area) { c.Area = a }
 
 // newIncludeCommandFromAttrs creates an IncludeCommand from parsed attributes.
 func newIncludeCommandFromAttrs(attrs map[string]string) (Command, error) {

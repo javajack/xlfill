@@ -75,6 +75,13 @@ Region > Department > Employee — each level independently collapsible.
 
 `jx:group` uses deferred execution. The group ranges are recorded during template processing and applied after all rows are written, ensuring correct row references even when loops expand the output.
 
+## Common pitfalls
+
+- **Excel caps outline depth at 8 levels.** Nesting `jx:group` beyond 8 levels has no visual effect after the 8th.
+- **`collapsed="true"` hides the rows by setting them invisible.** Users still see the [+] control to expand. If you want them truly hidden until expanded, this is the right default; if you want them always visible, leave `collapsed` off.
+- **Hidden grouped rows still count for `_row`.** If you reference the built-in `_row` variable inside a grouped area, it's based on the actual row index — hiding doesn't renumber.
+- **Summary rows above vs below.** Excel's outline direction (summary rows above or below detail) is a sheet-wide setting, not a per-group setting. Configure it in your template before saving.
+
 ## What's next?
 
 Add charts to visualize your data:

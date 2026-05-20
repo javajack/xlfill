@@ -15,8 +15,10 @@ type FreezePanesCommand struct {
 	Area      *Area
 }
 
-func (c *FreezePanesCommand) Name() string { return "freezePanes" }
-func (c *FreezePanesCommand) Reset()       {}
+func (c *FreezePanesCommand) Name() string    { return "freezePanes" }
+func (c *FreezePanesCommand) Reset()          {}
+func (c *FreezePanesCommand) GetArea() *Area  { return c.Area }
+func (c *FreezePanesCommand) SetArea(a *Area) { c.Area = a }
 
 // newFreezePanesCommandFromAttrs creates a FreezePanesCommand from parsed attributes.
 func newFreezePanesCommandFromAttrs(attrs map[string]string) (Command, error) {

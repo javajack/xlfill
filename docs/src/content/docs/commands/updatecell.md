@@ -41,6 +41,12 @@ Regular `${...}` expressions work for most cases. `jx:updateCell` is useful when
 - The cell is outside a loop and you want to set it from a specific context variable
 - You need the update to happen after other commands have run (it respects command ordering)
 
+## Common pitfalls
+
+- **Don't reach for it first.** 9 times out of 10, a plain `${...}` expression in the cell value is simpler and does the same thing. Use `jx:updateCell` only when ordering matters.
+- **`lastCell` is the single target cell**, not a range. The command updates exactly one cell.
+- **The `updater` value is an expression**, not just a variable name. `updater="totalAmount * 1.1"` is valid.
+
 ## Try it
 
 Browse all 19 runnable examples with input templates and filled outputs on the [Examples](/xlfill/reference/examples/) page.

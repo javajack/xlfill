@@ -430,8 +430,8 @@ func TestDirectionRight_FourColumns(t *testing.T) {
 
 	size, err := cmd.ApplyAt(NewCellRef(sheet, 0, 0), ctx, tx)
 	require.NoError(t, err)
-	assert.Equal(t, 12, size.Width)  // 3 items * 4 cols
-	assert.Equal(t, 2, size.Height)  // max height
+	assert.Equal(t, 12, size.Width) // 3 items * 4 cols
+	assert.Equal(t, 2, size.Height) // max height
 
 	var buf bytes.Buffer
 	require.NoError(t, tx.Write(&buf))
@@ -492,10 +492,12 @@ func TestClearTemplateCells_UnusedExpressionsStay(t *testing.T) {
 	require.NoError(t, err)
 	defer outFile.Close()
 
-	// With empty list and no clearing, template expressions may remain
-	// The header should still be there
 	v, _ := outFile.GetCellValue(sheet, "A1")
-	assert.Equal(t, "Header", v)
+	assert.Equal(t, "Header", v, "header preserved")
+
+	// With clearing off, the unevaluated ${e.name} expression remains in A2.
+	v2, _ := outFile.GetCellValue(sheet, "A2")
+	assert.Equal(t, "${e.name}", v2, "unfilled template expression remains when clearing is disabled")
 }
 
 // TestClearTemplateCells_UnusedExpressionsAreCleared tests that with clearTemplateCells=true,
@@ -530,9 +532,57 @@ func TestClearTemplateCells_UnusedExpressionsAreCleared(t *testing.T) {
 	require.NoError(t, err)
 	defer outFile.Close()
 
-	// Header should still be present
 	v, _ := outFile.GetCellValue(sheet, "A1")
-	assert.Equal(t, "Header", v)
+	assert.Equal(t, "Header", v, "header preserved")
+
+	// With clearing on, the unfilled ${e.name} in A2 must be blanked.
+	v2, _ := outFile.GetCellValue(sheet, "A2")
+	assert.Equal(t, "", v2, "unfilled template expression cleared when clearing is enabled")
+}
+
+// TestClearTemplateCells_FilledExpressionsKept verifies that cells which were
+// successfully transformed during iteration are NOT cleared by the clear pass,
+// regardless of whether they originally held a template expression.
+func TestClearTemplateCells_FilledExpressionsKept(t *testing.T) {
+	f := excelize.NewFile()
+	sheet := "Sheet1"
+
+	f.SetCellValue(sheet, "A1", "Header")
+	f.SetCellValue(sheet, "A2", "${e.name}")
+	f.SetCellValue(sheet, "D2", "XX")
+
+	f.AddComment(sheet, excelize.Comment{
+		Cell: "A1", Author: "xlfill",
+		Text: `jx:area(lastCell="D2")`,
+	})
+	f.AddComment(sheet, excelize.Comment{
+		Cell: "A2", Author: "xlfill",
+		Text: `jx:each(items="employees" var="e" lastCell="D2")`,
+	})
+
+	tmpl := filepath.Join(testdataDir(t), "clear_cells3.xlsx")
+	require.NoError(t, f.SaveAs(tmpl))
+	f.Close()
+
+	data := map[string]any{"employees": []any{
+		map[string]any{"name": "Alice"},
+		map[string]any{"name": "Bob"},
+	}}
+
+	out, err := FillBytes(tmpl, data, WithClearTemplateCells(true))
+	require.NoError(t, err)
+
+	outFile, err := excelize.OpenReader(bytes.NewReader(out))
+	require.NoError(t, err)
+	defer outFile.Close()
+
+	// A2 was the start of the each — iteration 0 wrote "Alice" there.
+	v2, _ := outFile.GetCellValue(sheet, "A2")
+	assert.Equal(t, "Alice", v2)
+
+	// A3 received iteration 1.
+	v3, _ := outFile.GetCellValue(sheet, "A3")
+	assert.Equal(t, "Bob", v3)
 }
 
 // =============================================================================

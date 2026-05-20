@@ -23,78 +23,154 @@ type streamCell struct {
 // ExcelizeTransformer (read-only after init). Output cells are buffered per row
 // and flushed to the StreamWriter in ascending row order.
 //
-// Limitations of streaming mode:
+// Multi-sheet streaming: a single StreamingTransformer can stream multiple
+// sheets at once, each backed by its own StreamWriter and row buffer. Writes
+// to sheets that are NOT in the streamed set are delegated to the underlying
+// ExcelizeTransformer (so hyperlinks, images, and formula remapping still work
+// on those sheets).
+//
+// Limitations on streamed sheets:
 //   - Formula post-processing (reference remapping) is not supported
-//   - Hyperlinks are not supported (silently ignored)
-//   - Images are not supported (returns error)
-//   - Rows must be written in ascending order (guaranteed by area processing)
+//   - Hyperlinks are silently dropped and surfaced via Filler.Warnings()
+//   - Images return an error
+//   - Per-row height changes after creation are not supported
+//   - Rows are written in ascending order (guaranteed by area processing)
 type StreamingTransformer struct {
-	reader       *ExcelizeTransformer
-	sw           *excelize.StreamWriter
-	sheet        string
-	mu           sync.Mutex
-	rowBuf       map[int]map[int]*streamCell // row -> col -> cell
-	nextFlushRow int                         // next row index to flush
-	closed       bool
+	reader        *ExcelizeTransformer
+	sws           map[string]*excelize.StreamWriter
+	rowBufs       map[string]map[int]map[int]*streamCell
+	nextFlushRows map[string]int
+	mu            sync.Mutex
+	closed        bool
+
+	// Warnings collected during streaming (e.g. dropped hyperlinks).
+	// Inspect via Warnings() — populated by Transform.
+	warnMu   sync.Mutex
+	warnings []string
 }
 
-// NewStreamingTransformer creates a streaming transformer for the given sheet.
-// It initializes the StreamWriter and copies column widths from the template.
+// NewStreamingTransformer creates a streaming transformer that streams a single sheet.
+// Equivalent to NewStreamingTransformerForSheets(reader, []string{sheet}).
 func NewStreamingTransformer(reader *ExcelizeTransformer, sheet string) (*StreamingTransformer, error) {
-	sw, err := reader.file.NewStreamWriter(sheet)
-	if err != nil {
-		return nil, fmt.Errorf("create stream writer for sheet %q: %w", sheet, err)
-	}
+	return NewStreamingTransformerForSheets(reader, []string{sheet})
+}
 
+// NewStreamingTransformerForSheets creates a streaming transformer that streams
+// every sheet in the given list. Writes to other sheets are delegated to the
+// underlying ExcelizeTransformer.
+//
+// Pass nil or an empty list to stream every sheet in the workbook.
+//
+// Sheets named in the list that do not exist in the workbook are skipped with
+// a warning (inspect via Warnings()). If no listed sheet exists at all, the
+// returned transformer streams nothing and behaves like a passthrough to the
+// underlying ExcelizeTransformer.
+func NewStreamingTransformerForSheets(reader *ExcelizeTransformer, sheets []string) (*StreamingTransformer, error) {
+	if len(sheets) == 0 {
+		sheets = reader.GetSheetNames()
+	}
+	existing := make(map[string]struct{}, len(reader.GetSheetNames()))
+	for _, s := range reader.GetSheetNames() {
+		existing[s] = struct{}{}
+	}
 	st := &StreamingTransformer{
-		reader: reader,
-		sw:     sw,
-		sheet:  sheet,
-		rowBuf: make(map[int]map[int]*streamCell),
+		reader:        reader,
+		sws:           make(map[string]*excelize.StreamWriter, len(sheets)),
+		rowBufs:       make(map[string]map[int]map[int]*streamCell, len(sheets)),
+		nextFlushRows: make(map[string]int, len(sheets)),
 	}
+	for _, sheet := range sheets {
+		if _, ok := existing[sheet]; !ok {
+			st.addWarning(fmt.Sprintf("streaming sheet %q not found in template — skipped", sheet))
+			continue
+		}
+		sw, err := reader.file.NewStreamWriter(sheet)
+		if err != nil {
+			return nil, fmt.Errorf("create stream writer for sheet %q: %w", sheet, err)
+		}
+		st.sws[sheet] = sw
+		st.rowBufs[sheet] = make(map[int]map[int]*streamCell)
 
-	// Copy column widths from template
-	if sd, ok := reader.sheets[sheet]; ok {
-		for col, w := range sd.ColumnWidths {
-			colNum := col + 1
-			sw.SetColWidth(colNum, colNum, w)
+		if sd, ok := reader.sheets[sheet]; ok {
+			for col, w := range sd.ColumnWidths {
+				colNum := col + 1
+				sw.SetColWidth(colNum, colNum, w)
+			}
 		}
 	}
-
 	return st, nil
 }
 
-// bufferCell stores a cell value for later flushing.
+// isStreamedSheet reports whether writes to the named sheet should be streamed.
+func (st *StreamingTransformer) isStreamedSheet(sheet string) bool {
+	_, ok := st.sws[sheet]
+	return ok
+}
+
+// StreamedSheets returns the sorted list of sheet names that are being streamed.
+func (st *StreamingTransformer) StreamedSheets() []string {
+	names := make([]string, 0, len(st.sws))
+	for name := range st.sws {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// Warnings returns warnings collected during streaming
+// (e.g. hyperlinks dropped because they can't be expressed via StreamWriter).
+// Safe to call concurrently.
+func (st *StreamingTransformer) Warnings() []string {
+	st.warnMu.Lock()
+	defer st.warnMu.Unlock()
+	out := make([]string, len(st.warnings))
+	copy(out, st.warnings)
+	return out
+}
+
+func (st *StreamingTransformer) addWarning(msg string) {
+	st.warnMu.Lock()
+	st.warnings = append(st.warnings, msg)
+	st.warnMu.Unlock()
+}
+
+// bufferCell stores a cell value for later flushing. Caller must ensure
+// ref.Sheet is in the streamed set (use isStreamedSheet to check).
 func (st *StreamingTransformer) bufferCell(ref CellRef, value any, styleID int, formula string) error {
 	st.mu.Lock()
 	defer st.mu.Unlock()
 
 	row := ref.Row
+	sheet := ref.Sheet
+
+	rowBuf := st.rowBufs[sheet]
+	nextFlushRow := st.nextFlushRows[sheet]
 
 	// Flush all completed rows below this one
-	for r := st.nextFlushRow; r < row; r++ {
-		if err := st.flushRowLocked(r); err != nil {
+	for r := nextFlushRow; r < row; r++ {
+		if err := st.flushRowLocked(sheet, r); err != nil {
 			return err
 		}
 	}
 
-	// Buffer this cell
-	if st.rowBuf[row] == nil {
-		st.rowBuf[row] = make(map[int]*streamCell)
+	if rowBuf[row] == nil {
+		rowBuf[row] = make(map[int]*streamCell)
 	}
-	st.rowBuf[row][ref.Col] = &streamCell{value: value, styleID: styleID, formula: formula}
+	rowBuf[row][ref.Col] = &streamCell{value: value, styleID: styleID, formula: formula}
 	return nil
 }
 
-// flushRowLocked writes a buffered row to the StreamWriter. Caller must hold mu.
-func (st *StreamingTransformer) flushRowLocked(row int) error {
-	cells := st.rowBuf[row]
+// flushRowLocked writes a buffered row to the StreamWriter for the given sheet.
+// Caller must hold mu.
+func (st *StreamingTransformer) flushRowLocked(sheet string, row int) error {
+	rowBuf := st.rowBufs[sheet]
+	sw := st.sws[sheet]
+	cells := rowBuf[row]
 	if len(cells) == 0 {
-		st.nextFlushRow = row + 1
+		st.nextFlushRows[sheet] = row + 1
 		return nil
 	}
 
-	// Find min and max column to avoid padding unused leading columns
 	minCol, maxCol := int(^uint(0)>>1), 0
 	for col := range cells {
 		if col < minCol {
@@ -104,7 +180,6 @@ func (st *StreamingTransformer) flushRowLocked(row int) error {
 			maxCol = col
 		}
 	}
-	// Build values slice starting from minCol
 	values := make([]interface{}, maxCol-minCol+1)
 	for col := minCol; col <= maxCol; col++ {
 		idx := col - minCol
@@ -120,16 +195,17 @@ func (st *StreamingTransformer) flushRowLocked(row int) error {
 	}
 
 	startCell := ColToName(minCol) + strconv.Itoa(row+1)
-	if err := st.sw.SetRow(startCell, values); err != nil {
-		return fmt.Errorf("stream write row %d: %w", row+1, err)
+	if err := sw.SetRow(startCell, values); err != nil {
+		return fmt.Errorf("stream write row %d on sheet %q: %w", row+1, sheet, err)
 	}
 
-	delete(st.rowBuf, row)
-	st.nextFlushRow = row + 1
+	delete(rowBuf, row)
+	st.nextFlushRows[sheet] = row + 1
 	return nil
 }
 
-// Flush writes all remaining buffered rows and finalizes the StreamWriter.
+// Flush writes all remaining buffered rows on every streamed sheet and
+// finalizes each StreamWriter.
 func (st *StreamingTransformer) Flush() error {
 	st.mu.Lock()
 	defer st.mu.Unlock()
@@ -138,21 +214,32 @@ func (st *StreamingTransformer) Flush() error {
 		return nil
 	}
 
-	// Collect and sort remaining rows
-	rows := make([]int, 0, len(st.rowBuf))
-	for r := range st.rowBuf {
-		rows = append(rows, r)
+	// Sort sheet names for deterministic flush order.
+	sheets := make([]string, 0, len(st.sws))
+	for s := range st.sws {
+		sheets = append(sheets, s)
 	}
-	sort.Ints(rows)
+	sort.Strings(sheets)
 
-	for _, r := range rows {
-		if err := st.flushRowLocked(r); err != nil {
-			return err
+	for _, sheet := range sheets {
+		rowBuf := st.rowBufs[sheet]
+		rows := make([]int, 0, len(rowBuf))
+		for r := range rowBuf {
+			rows = append(rows, r)
+		}
+		sort.Ints(rows)
+		for _, r := range rows {
+			if err := st.flushRowLocked(sheet, r); err != nil {
+				return err
+			}
+		}
+		if err := st.sws[sheet].Flush(); err != nil {
+			return fmt.Errorf("flush stream writer for sheet %q: %w", sheet, err)
 		}
 	}
 
 	st.closed = true
-	return st.sw.Flush()
+	return nil
 }
 
 // --- Transformer interface implementation ---
@@ -182,20 +269,24 @@ func (st *StreamingTransformer) ResetTargetCellRefs() {
 	st.reader.ResetTargetCellRefs()
 }
 
-// Transform reads from the template and buffers the result for streaming output.
+// Transform routes to the streaming buffer for streamed sheets, or to the
+// underlying ExcelizeTransformer for non-streamed sheets (preserving full
+// hyperlink and image support there).
 func (st *StreamingTransformer) Transform(src, target CellRef, ctx *Context, updateRowHeight bool) error {
+	if !st.isStreamedSheet(target.Sheet) {
+		return st.reader.Transform(src, target, ctx, updateRowHeight)
+	}
+
 	srcData := st.reader.GetCellData(src)
 	if srcData == nil {
 		return nil
 	}
 
-	// Resolve style
 	styleID := 0
 	if sid, ok := st.reader.styleCache[src.String()]; ok {
 		styleID = sid
 	}
 
-	// Handle formula cells
 	if srcData.IsFormulaCell() {
 		formula := srcData.Formula
 		if strings.Contains(formula, ctx.notationBegin) {
@@ -212,7 +303,6 @@ func (st *StreamingTransformer) Transform(src, target CellRef, ctx *Context, upd
 		return nil
 	}
 
-	// Handle expression cells
 	strVal, isStr := srcData.Value.(string)
 	if isStr && strings.Contains(strVal, ctx.notationBegin) {
 		val, _, err := ctx.EvaluateCellValue(strVal)
@@ -221,7 +311,9 @@ func (st *StreamingTransformer) Transform(src, target CellRef, ctx *Context, upd
 		}
 
 		if hv, ok := val.(HyperlinkValue); ok {
-			// Hyperlinks not supported in streaming — write display text only
+			// Streaming can't write hyperlinks. Record a warning and fall
+			// back to the display text so users see the link target text.
+			st.addWarning(fmt.Sprintf("hyperlink dropped at %s (URL=%q) — streaming mode cannot write hyperlinks", target, hv.URL))
 			if err := st.bufferCell(target, hv.String(), styleID, ""); err != nil {
 				return err
 			}
@@ -242,14 +334,23 @@ func (st *StreamingTransformer) Transform(src, target CellRef, ctx *Context, upd
 }
 
 func (st *StreamingTransformer) ClearCell(ref CellRef) error {
+	if !st.isStreamedSheet(ref.Sheet) {
+		return st.reader.ClearCell(ref)
+	}
 	return st.bufferCell(ref, "", st.lookupStyle(ref), "")
 }
 
 func (st *StreamingTransformer) SetFormula(ref CellRef, formula string) error {
+	if !st.isStreamedSheet(ref.Sheet) {
+		return st.reader.SetFormula(ref, formula)
+	}
 	return st.bufferCell(ref, nil, st.lookupStyle(ref), formula)
 }
 
 func (st *StreamingTransformer) SetCellValue(ref CellRef, value any) error {
+	if !st.isStreamedSheet(ref.Sheet) {
+		return st.reader.SetCellValue(ref, value)
+	}
 	return st.bufferCell(ref, value, st.lookupStyle(ref), "")
 }
 
@@ -262,7 +363,10 @@ func (st *StreamingTransformer) lookupStyle(ref CellRef) int {
 }
 
 func (st *StreamingTransformer) SetRowHeight(sheet string, row int, height float64) error {
-	// StreamWriter doesn't support per-row height after creation; silently ignore
+	if !st.isStreamedSheet(sheet) {
+		return st.reader.SetRowHeight(sheet, row, height)
+	}
+	// StreamWriter doesn't support per-row height after creation; silently ignore.
 	return nil
 }
 
@@ -279,15 +383,24 @@ func (st *StreamingTransformer) CopySheet(src, dst string) error {
 }
 
 func (st *StreamingTransformer) AddImage(sheet, cell string, imgBytes []byte, imgType string, scaleX, scaleY float64) error {
-	return fmt.Errorf("images are not supported in streaming mode")
+	if !st.isStreamedSheet(sheet) {
+		return st.reader.AddImage(sheet, cell, imgBytes, imgType, scaleX, scaleY)
+	}
+	return fmt.Errorf("images are not supported in streaming mode (sheet %q)", sheet)
 }
 
 func (st *StreamingTransformer) MergeCells(sheet, topLeft, bottomRight string) error {
-	return st.sw.MergeCell(topLeft, bottomRight)
+	if !st.isStreamedSheet(sheet) {
+		return st.reader.MergeCells(sheet, topLeft, bottomRight)
+	}
+	return st.sws[sheet].MergeCell(topLeft, bottomRight)
 }
 
 func (st *StreamingTransformer) SetCellHyperLink(ref CellRef, url, display string) error {
-	// Hyperlinks not supported in streaming mode — silently ignored
+	if !st.isStreamedSheet(ref.Sheet) {
+		return st.reader.SetCellHyperLink(ref, url, display)
+	}
+	st.addWarning(fmt.Sprintf("hyperlink dropped at %s (URL=%q) — streaming mode cannot write hyperlinks", ref, url))
 	return nil
 }
 

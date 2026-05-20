@@ -105,10 +105,10 @@ func TestArea_ApplyAt_SingleCommand(t *testing.T) {
 
 	// EachCommand on row 2 (A2:B2), 1 row high
 	eachCmd := &EachCommand{
-		Items: "employees",
-		Var:   "e",
+		Items:     "employees",
+		Var:       "e",
 		Direction: "DOWN",
-		Area: NewArea(NewCellRef(sheet, 1, 0), Size{Width: 2, Height: 1}, tx),
+		Area:      NewArea(NewCellRef(sheet, 1, 0), Size{Width: 2, Height: 1}, tx),
 	}
 
 	area.AddCommand(eachCmd, NewCellRef(sheet, 1, 0), Size{Width: 2, Height: 1})

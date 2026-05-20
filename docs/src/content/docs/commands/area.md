@@ -45,6 +45,13 @@ This says: *"The template region is A1:D5. Within that region, loop over `employ
 - The area defines what gets **processed**, not what gets output — a `jx:each` inside may expand beyond the original area boundaries
 - If your template has a header row above the repeating row, include the header in the area so it appears in the output
 
+## Common pitfalls
+
+- **No `jx:area` → nothing happens.** Fill returns an error like *"no jx:area commands found in template"*. Every sheet you want processed needs one.
+- **Putting it on the wrong cell.** It must live in the comment of the **top-left** cell of the template region. Putting it in the middle works syntactically but the area starts where you put it, not where you intended.
+- **Making `lastCell` too small.** If your `jx:each` row sits below your `lastCell`, the engine ignores it. Stretch `lastCell` to the bottom-right of *everything* you want included.
+- **Multiple areas on one sheet.** You can have multiple `jx:area` commands on the same sheet (separate blocks). They're processed independently — but don't let them overlap.
+
 ## Try it
 
 Every example in the test suite uses `jx:area`. Browse all 19 runnable examples with input templates and filled outputs on the [Examples](/xlfill/reference/examples/) page.

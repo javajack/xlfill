@@ -16,8 +16,10 @@ type SparklineCommand struct {
 	Area      *Area
 }
 
-func (c *SparklineCommand) Name() string { return "sparkline" }
-func (c *SparklineCommand) Reset()       {}
+func (c *SparklineCommand) Name() string    { return "sparkline" }
+func (c *SparklineCommand) Reset()          {}
+func (c *SparklineCommand) GetArea() *Area  { return c.Area }
+func (c *SparklineCommand) SetArea(a *Area) { c.Area = a }
 
 // newSparklineCommandFromAttrs creates a SparklineCommand from parsed attributes.
 func newSparklineCommandFromAttrs(attrs map[string]string) (Command, error) {

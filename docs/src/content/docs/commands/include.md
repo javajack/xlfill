@@ -70,6 +70,13 @@ This eliminates copy-paste drift across dozens of report templates.
 
 Expressions (`${...}`) in the included area are evaluated using the host template's data context. The included content is not a static copy — it participates fully in template processing.
 
+## Common pitfalls
+
+- **Paths are relative to the template file, not the Go process working directory.** If your include points to `partials/header.xlsx`, that's resolved relative to the template's directory.
+- **Absolute paths are rejected.** XLFill's path validator refuses `/etc/passwd`-style paths and `..` traversal as a security measure. Use relative paths only.
+- **Max nesting depth is 10.** Templates that include templates that include templates… get rejected past depth 10.
+- **The included area is rendered with the host's data context.** Expressions inside the include can reference the host's variables. This is usually what you want (shared header references the host's `${reportDate}`) but can be confusing if you assume includes are isolated.
+
 ## What's next?
 
 That covers all 20 commands in XLFill. For a complete overview:

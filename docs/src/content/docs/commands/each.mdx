@@ -201,6 +201,16 @@ Cell A2 comment:
 
 This creates a department header followed by employee rows for each department. XLFill detects the nesting automatically from the cell positions.
 
+## Common pitfalls
+
+- **`items` isn't a slice.** XLFill errors if `items` resolves to a non-iterable (number, string, map). For an empty case, pass `[]any{}` from Go — the loop produces zero rows without error.
+- **`var` collides with a top-level data key.** Inside the loop, the loop variable shadows the data key. Outside the loop, the data key is visible. Use distinct names to avoid confusion.
+- **`lastCell` is the one-iteration template, not the full output.** If your iteration row is row 3, `lastCell="C3"` is correct — XLFill expands it as iterations multiply. `lastCell="C100"` would interpret rows 3-100 as a single iteration's template, which is almost never what you want.
+- **`direction="RIGHT"` with content below.** Right-expansion shifts columns right; content directly below the iteration cell stays put. Plan your layout so nothing sits where columns will expand.
+- **`select` filters before sort.** If you want "top 5 by salary", combine `select` + `orderBy` + an outer slicing in Go (the engine doesn't natively support LIMIT).
+- **`multisheet` deletes the template sheet.** That's by design — but if your workbook has multiple sheets and only one is the multisheet template, the others survive untouched.
+- **Nested each detection is positional.** The inner each's `lastCell` must be strictly inside the outer's area. If they overlap or touch, the engine may treat them as siblings.
+
 ## Try it
 
 Download the runnable examples from [`examples/xlfill-test`](https://github.com/javajack/xlfill/tree/main/examples/xlfill-test):

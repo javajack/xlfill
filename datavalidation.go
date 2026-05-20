@@ -22,8 +22,10 @@ type DataValidationCommand struct {
 	Area           *Area
 }
 
-func (c *DataValidationCommand) Name() string { return "dataValidation" }
-func (c *DataValidationCommand) Reset()       {}
+func (c *DataValidationCommand) Name() string    { return "dataValidation" }
+func (c *DataValidationCommand) Reset()          {}
+func (c *DataValidationCommand) GetArea() *Area  { return c.Area }
+func (c *DataValidationCommand) SetArea(a *Area) { c.Area = a }
 
 // newDataValidationCommandFromAttrs creates a DataValidationCommand from parsed attributes.
 func newDataValidationCommandFromAttrs(attrs map[string]string) (Command, error) {

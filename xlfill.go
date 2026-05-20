@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -100,24 +101,21 @@ func (f *Filler) FillWriter(data map[string]any, w io.Writer) error {
 	var stx *StreamingTransformer
 
 	if useStreaming {
-		sheets := etx.GetSheetNames()
-		if len(sheets) > 0 {
-			targetSheet := sheets[0]
-			shouldStream := len(f.opts.streamingSheets) == 0 // stream all if no specific sheets
-			for _, s := range f.opts.streamingSheets {
-				if s == targetSheet {
-					shouldStream = true
-					break
-				}
+		// Determine which sheets to stream. An empty streamingSheets list
+		// means "stream every sheet"; a non-empty list means "stream only
+		// these named sheets" and writes to other sheets fall through to
+		// the underlying ExcelizeTransformer.
+		sheetsToStream := f.opts.streamingSheets
+		if len(sheetsToStream) == 0 {
+			sheetsToStream = etx.GetSheetNames()
+		}
+		if len(sheetsToStream) > 0 {
+			var serr error
+			stx, serr = NewStreamingTransformerForSheets(etx, sheetsToStream)
+			if serr != nil {
+				return fmt.Errorf("init streaming: %w", serr)
 			}
-			if shouldStream {
-				var serr error
-				stx, serr = NewStreamingTransformer(etx, targetSheet)
-				if serr != nil {
-					return fmt.Errorf("init streaming: %w", serr)
-				}
-				tx = stx
-			}
+			tx = stx
 		}
 	}
 
@@ -204,6 +202,14 @@ func (f *Filler) FillWriter(data map[string]any, w io.Writer) error {
 		}
 	}
 
+	// Fold streaming-mode warnings (e.g. dropped hyperlinks) into the filler's
+	// WarningCollector so callers can inspect them via Filler.Warnings().
+	if stx != nil {
+		for _, msg := range stx.Warnings() {
+			f.warnings.Add(CellRef{}, msg)
+		}
+	}
+
 	// Write output
 	return tx.Write(w)
 }
@@ -244,11 +250,37 @@ func (f *Filler) openTemplate() (*ExcelizeTransformer, error) {
 	return nil, NewRuntimeError("no template specified: use WithTemplate or WithTemplateReader", nil)
 }
 
-// clearTemplateCells clears cells that still contain unexpanded template expressions.
+// clearTemplateCells clears any cell in the source area that still holds an
+// unevaluated template expression (e.g., when a jx:each iterated zero times).
+//
+// A cell is cleared when both:
+//   - its source value contains the template notation prefix (default `${`), and
+//   - it was never written to a target position during processing.
+//
+// Cells that were successfully transformed (their target list is non-empty) are
+// preserved as-is. Static cells without template expressions are also preserved.
 func (a *Area) clearTemplateCells(ctx *Context) {
-	// We only clear the source area cells that weren't overwritten by command output.
-	// The area's ClearCells method handles this.
-	// For now, no-op — the Transform already wrote evaluated values to target cells.
-	// Template cells outside any processed area retain their expressions, which is
-	// handled by clearing the area source if the output target differs from source.
+	if a.Transformer == nil {
+		return
+	}
+	notation := ctx.notationBegin
+	if notation == "" {
+		notation = "${"
+	}
+	for row := 0; row < a.AreaSize.Height; row++ {
+		for col := 0; col < a.AreaSize.Width; col++ {
+			ref := NewCellRef(a.StartCell.Sheet, a.StartCell.Row+row, a.StartCell.Col+col)
+			cd := a.Transformer.GetCellData(ref)
+			if cd == nil {
+				continue
+			}
+			s, ok := cd.Value.(string)
+			if !ok || !strings.Contains(s, notation) {
+				continue
+			}
+			if len(a.Transformer.GetTargetCellRef(ref)) == 0 {
+				_ = a.Transformer.ClearCell(ref)
+			}
+		}
+	}
 }

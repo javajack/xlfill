@@ -9,8 +9,10 @@ type AutoColWidthCommand struct {
 	Area *Area
 }
 
-func (c *AutoColWidthCommand) Name() string { return "autoColWidth" }
-func (c *AutoColWidthCommand) Reset()       {}
+func (c *AutoColWidthCommand) Name() string    { return "autoColWidth" }
+func (c *AutoColWidthCommand) Reset()          {}
+func (c *AutoColWidthCommand) GetArea() *Area  { return c.Area }
+func (c *AutoColWidthCommand) SetArea(a *Area) { c.Area = a }
 
 // newAutoColWidthCommandFromAttrs creates an AutoColWidthCommand from parsed attributes.
 func newAutoColWidthCommandFromAttrs(attrs map[string]string) (Command, error) {

@@ -9,23 +9,25 @@ import (
 // GridCommand implements the jx:grid command for dynamic grid rendering.
 // It renders headers horizontally and data rows below.
 type GridCommand struct {
-	Headers    string // expression for header values ([]any)
-	Data       string // expression for data rows ([]any)
-	Props      string // comma-separated property names for object data
+	Headers     string // expression for header values ([]any)
+	Data        string // expression for data rows ([]any)
+	Props       string // comma-separated property names for object data
 	FormatCells string // type-to-format mapping (unused for now)
-	HeaderArea *Area
-	BodyArea   *Area
+	HeaderArea  *Area
+	BodyArea    *Area
 }
 
-func (c *GridCommand) Name() string { return "grid" }
-func (c *GridCommand) Reset()       {}
+func (c *GridCommand) Name() string    { return "grid" }
+func (c *GridCommand) Reset()          {}
+func (c *GridCommand) GetArea() *Area  { return c.BodyArea }
+func (c *GridCommand) SetArea(a *Area) { c.BodyArea = a }
 
 // newGridCommandFromAttrs creates a GridCommand from parsed attributes.
 func newGridCommandFromAttrs(attrs map[string]string) (Command, error) {
 	cmd := &GridCommand{
-		Headers:    attrs["headers"],
-		Data:       attrs["data"],
-		Props:      attrs["props"],
+		Headers:     attrs["headers"],
+		Data:        attrs["data"],
+		Props:       attrs["props"],
 		FormatCells: attrs["formatCells"],
 	}
 	if cmd.Headers == "" {

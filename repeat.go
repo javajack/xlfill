@@ -15,8 +15,10 @@ type RepeatCommand struct {
 	Area      *Area
 }
 
-func (c *RepeatCommand) Name() string { return "repeat" }
-func (c *RepeatCommand) Reset()       {}
+func (c *RepeatCommand) Name() string    { return "repeat" }
+func (c *RepeatCommand) Reset()          {}
+func (c *RepeatCommand) GetArea() *Area  { return c.Area }
+func (c *RepeatCommand) SetArea(a *Area) { c.Area = a }
 
 // newRepeatCommandFromAttrs creates a RepeatCommand from parsed attributes.
 func newRepeatCommandFromAttrs(attrs map[string]string) (Command, error) {

@@ -31,12 +31,56 @@ xlfill.Fill("template.xlsx", "report.xlsx", data,
 | Memory | 8.3 MB | **3.3 MB** |
 | Allocs | 110K | **43K** |
 
-**Limitations:**
+:::caution[Streaming trades features for speed — read this before enabling]
+Streaming mode skips or drops several features. If your template uses any of these, you'll get **silently wrong output** unless you handle it:
+
+- **Hyperlinks are dropped** — the display text lands in the cell but the link is gone. You can detect this by inspecting `Filler.Warnings()` after the fill.
+- **Images return an error** when added on a streamed sheet.
+- **Formula reference remapping is skipped** — `=SUM(B1:B1)` won't expand to `=SUM(B1:B100)` on a streamed sheet.
+- **Per-row height changes are silently ignored** after the StreamWriter starts.
+
+Easy way to avoid surprises: use **`WithAutoMode`** instead of `WithStreaming(true)`. Auto-mode inspects your template and only picks streaming when it's compatible.
+:::
+
+**Limitations on streamed sheets:**
 - Formula reference remapping is skipped (formulas are written verbatim)
-- Hyperlinks are silently written as plain text
-- Images are not supported (returns error)
-- Single-sheet output only
+- Hyperlinks are dropped and surfaced via `Filler.Warnings()`
+- Images return an error
+- Per-row height changes after the StreamWriter starts are silently ignored
 - Rows must be written in ascending order (guaranteed by template processing)
+
+#### Selective sheet streaming
+
+If your workbook mixes a huge data sheet with a small summary sheet, stream only the big one:
+
+```go
+xlfill.Fill("template.xlsx", "report.xlsx", data,
+    xlfill.WithStreamingSheets("BigData"), // stream this sheet only
+)
+```
+
+The named sheet uses StreamWriter; other sheets use the in-memory path with full feature support (hyperlinks, images, formula remapping). Pass multiple sheet names to stream more than one:
+
+```go
+xlfill.WithStreamingSheets("Sales", "Returns")
+```
+
+Sheets named in the list that don't exist in the workbook are skipped with a warning (inspect via `Filler.Warnings()`).
+
+#### Catching streaming warnings
+
+```go
+filler := xlfill.NewFiller(
+    xlfill.WithTemplate("template.xlsx"),
+    xlfill.WithStreaming(true),
+)
+if err := filler.Fill(data, "report.xlsx"); err != nil {
+    log.Fatal(err)
+}
+for _, w := range filler.Warnings() {
+    log.Printf("warning: %s", w)
+}
+```
 
 ### Parallel mode
 
@@ -140,6 +184,10 @@ err := xlfill.Fill("template.xlsx", "report.xlsx", data,
 
 Progress works with all modes — sequential, streaming, and parallel (using atomic counters for thread safety).
 
+:::caution[`progressFunc` is called concurrently in parallel mode]
+With `WithParallelism(n)` where n > 1, your callback fires from multiple goroutines simultaneously. Make sure it's safe for concurrent use — write to a `chan FillProgress`, guard shared state with a mutex, or use atomic counters. The `Elapsed` field is not populated; track wall-clock time yourself if you need it.
+:::
+
 ## Deferred commands
 
 Several commands use **deferred execution** — they collect their configuration during template processing but apply their effects only after all rows are written. This is both a performance optimization and a correctness requirement: these commands need to know the final output row count to set correct ranges.
@@ -174,13 +222,32 @@ These happen automatically — no configuration needed:
 | **Pre-allocated slices** | Comment and formula cell lists are pre-sized during template loading. Reduces GC pressure for large templates. |
 | **Atomic progress counters** | `Area.rowsProcessed` uses `atomic.Int64` — safe for parallel mode with zero contention. |
 
+## Reproducing the benchmarks
+
+The numbers in this guide come from `go test -bench=. -benchmem` against `benchmark_test.go`. The absolute times depend on your hardware, but the **relative** numbers (streaming vs sequential, sequential vs parallel) should hold on any modern machine.
+
+```bash
+# All benchmarks
+go test -bench=. -benchmem -run=^$ -timeout=10m
+
+# Just the streaming-vs-sequential comparison
+go test -bench=BenchmarkFill -benchmem -run=^$
+
+# CPU profile, to find hot spots in your real template
+go test -bench=. -cpuprofile=cpu.prof -run=^$
+go tool pprof -http=:8080 cpu.prof
+```
+
+Benchmark with **your template**, not the demo one. Hot expressions, deep nesting, and lots of formulas can change which mode wins.
+
 ## Tips
 
 1. **Benchmark your actual template** — the examples above use a simple 3-column template. Complex expressions, formulas, and nested loops change the equation.
-2. **Streaming is the biggest win** — if your template is compatible, streaming mode gives 3x speedup and 60% less memory with zero code changes.
+2. **Streaming is the biggest win** — if your template is compatible, streaming mode gives ~3x speedup and ~60% less memory with zero code changes.
 3. **Auto-mode is safe** — it only selects modes your template supports. No silent failures.
-4. **Compile for batch** — if you generate the same report more than once, `Compile` pays for itself on the second fill.
-5. **Use `context.Context`** — always set a timeout for server-side report generation to prevent runaway fills.
+4. **Check `Filler.Warnings()` after streaming** — dropped hyperlinks and skipped sheets surface there.
+5. **Compile for batch** — if you generate the same report more than once, `Compile` pays for itself on the second fill.
+6. **Use `context.Context`** — always set a timeout for server-side report generation to prevent runaway fills.
 
 ## What's next?
 

@@ -52,6 +52,13 @@ Cell A1 comment:
 
 Columns expand to fit the widest value; rows expand to fit wrapped text. The output is always readable regardless of data length.
 
+## Common pitfalls
+
+- **Doesn't shrink — only widens.** Columns set narrower than their content will widen; columns wider than needed stay as designed.
+- **Capped at ~60 characters.** Very long strings stop expanding the column at ~60. Cells with longer text will be partially hidden unless wrap-text is enabled (combine with `jx:autoRowHeight`).
+- **Streaming mode is unsupported.** `WithStreaming(true)` writes column widths up front; per-output adjustments after that are silently ignored.
+- **Width calculation is a heuristic.** It estimates ~1.2 character widths per character. Mono-width and proportional fonts can differ; don't expect pixel-perfect alignment.
+
 ## What's next?
 
 Freeze header rows and columns for easier scrolling:

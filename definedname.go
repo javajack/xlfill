@@ -15,8 +15,10 @@ type DefinedNameCommand struct {
 	Area             *Area
 }
 
-func (c *DefinedNameCommand) Name() string { return "definedName" }
-func (c *DefinedNameCommand) Reset()       {}
+func (c *DefinedNameCommand) Name() string    { return "definedName" }
+func (c *DefinedNameCommand) Reset()          {}
+func (c *DefinedNameCommand) GetArea() *Area  { return c.Area }
+func (c *DefinedNameCommand) SetArea(a *Area) { c.Area = a }
 
 // newDefinedNameCommandFromAttrs creates a DefinedNameCommand from parsed attributes.
 func newDefinedNameCommandFromAttrs(attrs map[string]string) (Command, error) {

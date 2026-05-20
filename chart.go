@@ -20,8 +20,10 @@ type ChartCommand struct {
 	Area       *Area
 }
 
-func (c *ChartCommand) Name() string { return "chart" }
-func (c *ChartCommand) Reset()       {}
+func (c *ChartCommand) Name() string    { return "chart" }
+func (c *ChartCommand) Reset()          {}
+func (c *ChartCommand) GetArea() *Area  { return c.Area }
+func (c *ChartCommand) SetArea(a *Area) { c.Area = a }
 
 // newChartCommandFromAttrs creates a ChartCommand from parsed attributes.
 func newChartCommandFromAttrs(attrs map[string]string) (Command, error) {

@@ -89,6 +89,13 @@ jx:if(condition="hasData" ifArea="A2:C5" elseArea="A7:C8" lastCell="C8")
 
 When `hasData` is true, the A2:C5 region is rendered. When false, A7:C8 is rendered instead. This lets you show a data table or a "no results" message from the same template.
 
+## Common pitfalls
+
+- **`condition` must return a bool.** `condition="e.Name"` errors out — `Name` is a string. Use `condition="e.Name != ''"` instead.
+- **`nil` is treated as false** (matches JXLS v3 behavior). So `condition="e.Manager"` quietly works even when `Manager` might be unset, but it won't error if your field name is wrong — be careful.
+- **`select` on `jx:each` is often what you want instead.** If you're filtering rows in a loop, `jx:each(... select="e.Active")` is cleaner than `jx:each + jx:if` inside.
+- **Else-area is opt-in.** Without `elseArea`, a false condition just leaves a gap (rows below shift up). If you want a "no results" message, define both ifArea and elseArea.
+
 ## Try it
 
 Download the runnable example: **template** [t07.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t07.xlsx) | **output** [07_if_command.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/07_if_command.xlsx) | [code snippet](/xlfill/reference/examples/#07-conditional)

@@ -52,6 +52,13 @@ Headers expand to the right. Data rows expand downward. The template cell's form
 - Use **`jx:each`** when your columns are fixed and known at template design time (the common case)
 - Use **`jx:grid`** when the number of columns is dynamic — the data determines how many columns appear
 
+## Common pitfalls
+
+- **Shape mismatch.** Each row in `data` (the inner slice) should be the same length as `headers`. Shorter rows leave blank cells; longer ones overflow past the area boundary.
+- **Headers are a 1D slice, data is 2D.** `headers: []string{"Q1","Q2"}` and `data: [][]any{{1,2},{3,4}}`. Easy to flip when you're tired.
+- **The template cell's formatting carries to every generated cell.** Bold + center-aligned in the template → bold + center in every output cell. Pick the template formatting carefully.
+- **Use `jx:each` for fixed columns.** `jx:grid` is for cases where column count is data-driven; if your columns are known, plain `jx:each` is clearer.
+
 ## Try it
 
 Download the runnable example: **template** [t09.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t09.xlsx) | **output** [09_grid.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/09_grid.xlsx) | [code snippet](/xlfill/reference/examples/#09-dynamic-grid)

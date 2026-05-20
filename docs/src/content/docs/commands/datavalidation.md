@@ -97,6 +97,13 @@ Every row gets the same dropdown. The validation rule is applied per-row during 
 
 `jx:dataValidation` uses deferred execution — the validation rules are collected during template processing and applied in a single batch after all rows are written. This is both faster and ensures correct cell references even when rows shift during expansion.
 
+## Common pitfalls
+
+- **List source must be a comma-separated string or a slice.** `formula1="Red,Green,Blue"` works; so does a slice value in your data. Excel rejects spaces around commas — keep it tight.
+- **Validation doesn't block existing values.** If the cell already has a value that violates the rule, Excel keeps it. Validation only fires on *new* user input.
+- **Validation rules are dropped in streaming mode.** Use sequential or auto mode if validations are critical.
+- **Custom validations need an Excel formula, not a Go expression.** `type="custom"` `formula1` is an Excel formula (e.g. `LEN(A1)<=10`), evaluated by Excel — not by xlfill.
+
 ## What's next?
 
 Add structured Excel tables with auto-filter and banded rows:

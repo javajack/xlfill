@@ -59,6 +59,13 @@ Create a pivot table in another sheet that references "PivotSource" as its data 
 
 `jx:definedName` uses deferred execution. The named range is created after all rows are written, so the range covers the correct number of output rows.
 
+## Common pitfalls
+
+- **Names must follow Excel's rules.** No spaces, must start with a letter or underscore, can't be a cell reference like `A1`. Use `EmployeeSales`, not `Employee Sales` or `A1Range`.
+- **Workbook scope is the default.** A workbook-scoped name must be unique across the file. Sheet-scoped names (`scope="sheet"`) can repeat across sheets.
+- **Don't reference defined names that haven't been created yet.** A formula like `=SUM(Salaries)` in a cell that's processed *before* the `jx:definedName` command (which uses deferred execution) is fine — Excel resolves the name on file open, not during processing.
+- **Renaming the source area breaks references elsewhere.** If something outside the template area references the name, changing the name in the comment will silently break it. Search the template for the name before editing.
+
 ## What's next?
 
 Compose templates from reusable fragments:

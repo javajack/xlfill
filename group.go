@@ -10,8 +10,10 @@ type GroupCommand struct {
 	Area      *Area
 }
 
-func (c *GroupCommand) Name() string { return "group" }
-func (c *GroupCommand) Reset()       {}
+func (c *GroupCommand) Name() string    { return "group" }
+func (c *GroupCommand) Reset()          {}
+func (c *GroupCommand) GetArea() *Area  { return c.Area }
+func (c *GroupCommand) SetArea(a *Area) { c.Area = a }
 
 // newGroupCommandFromAttrs creates a GroupCommand from parsed attributes.
 func newGroupCommandFromAttrs(attrs map[string]string) (Command, error) {

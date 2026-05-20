@@ -78,6 +78,13 @@ When placed inside a `jx:each`, the conditional format rule is applied to the en
 
 Like `jx:table` and `jx:chart`, conditional formatting uses deferred execution. Rules are collected during processing and applied after all rows are written. This ensures the format range covers the correct number of output rows, even with nested loops and conditional areas.
 
+## Common pitfalls
+
+- **Rule order matters.** Multiple rules on the same range are evaluated top-to-bottom. The first matching `cellIs` rule wins.
+- **Data bars and color scales need numeric data.** Apply them to columns that hold numbers. Mixing strings in a numeric column makes Excel show empty bars for the string rows.
+- **Icon sets quantize values into buckets** (3 icons → 3 buckets, 5 icons → 5 buckets). If your data is heavily skewed, most rows land in the same bucket. Use `colorScale` for smoother gradients.
+- **Some viewers render conditional formats differently.** LibreOffice's data bars are subtly different from Excel's; Google Sheets supports a smaller subset. Test in the viewer your users use.
+
 ## What's next?
 
 Group rows into collapsible outline sections:

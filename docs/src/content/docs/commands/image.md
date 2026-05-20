@@ -64,6 +64,13 @@ Cell A1 also has:
 
 Each employee gets their photo in column A, with name/details in columns B-D.
 
+## Common pitfalls
+
+- **`imageType` must match the actual bytes.** Setting `imageType="PNG"` on a JPEG file produces a corrupted image. Sniff the format if your data is mixed: PNG starts with `89 50 4E 47`, JPEG with `FF D8 FF`.
+- **The cell area determines image size — but only loosely.** Excel anchors the image to the top-left cell; resizing the cell after the fact rescales the image. Use `scaleX`/`scaleY` if you need a different rendered size than the area suggests.
+- **Empty `[]byte` → blank cell.** XLFill silently skips zero-length image data rather than erroring. Validate your byte slice before passing it.
+- **Streaming mode rejects images.** Adding an image on a streamed sheet returns an error. Use sequential mode or `WithStreamingSheets` to exclude the image sheet.
+
 ## Try it
 
 Download the runnable example: **template** [t10.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t10.xlsx) | **output** [10_image.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/10_image.xlsx) | [code snippet](/xlfill/reference/examples/#10-embed-image)

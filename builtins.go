@@ -6,7 +6,14 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
+
+// titleCaser is the Unicode-aware title caser used by Title.
+// Constructed once at package load — cases.Caser is safe for concurrent use.
+var titleCaser = cases.Title(language.Und)
 
 // registerBuiltins registers all built-in template functions into the map.
 // Only sets a key if it is not already present (user data takes precedence).
@@ -94,8 +101,8 @@ func Upper(s string) string { return strings.ToUpper(s) }
 // Lower returns the lowercase version of a string.
 func Lower(s string) string { return strings.ToLower(s) }
 
-// Title returns the title-case version of a string.
-func Title(s string) string { return strings.Title(s) } //nolint:staticcheck
+// Title returns the title-case version of a string using Unicode-aware rules.
+func Title(s string) string { return titleCaser.String(s) }
 
 // Join joins slice elements with a separator.
 // Items can be a []string, []any, or any slice type.

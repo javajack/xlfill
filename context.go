@@ -130,8 +130,8 @@ func (c *Context) Clone() *Context {
 		mapDirtyKeys:    make(map[string]struct{}, 4),
 		mapNeedsFull:    true,
 		deferred:        c.deferred,        // shared, thread-safe
-		customFunctions: c.customFunctions,  // shared read-only
-		i18nBundle:      c.i18nBundle,       // shared read-only
+		customFunctions: c.customFunctions, // shared read-only
+		i18nBundle:      c.i18nBundle,      // shared read-only
 		includeDepth:    c.includeDepth,
 	}
 }

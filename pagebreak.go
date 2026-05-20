@@ -12,8 +12,10 @@ type PageBreakCommand struct {
 	Area *Area
 }
 
-func (c *PageBreakCommand) Name() string { return "pageBreak" }
-func (c *PageBreakCommand) Reset()       {}
+func (c *PageBreakCommand) Name() string    { return "pageBreak" }
+func (c *PageBreakCommand) Reset()          {}
+func (c *PageBreakCommand) GetArea() *Area  { return c.Area }
+func (c *PageBreakCommand) SetArea(a *Area) { c.Area = a }
 
 // newPageBreakCommandFromAttrs creates a PageBreakCommand from parsed attributes.
 func newPageBreakCommandFromAttrs(attrs map[string]string) (Command, error) {

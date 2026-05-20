@@ -56,6 +56,13 @@ Generate 100 invoices in one workbook, each on its own page. The recipient print
 
 Without this command, Excel uses its default page breaking algorithm based on paper size and margins. For data-driven reports where section length varies, this almost always breaks pages in the wrong place — mid-table, mid-section, or splitting a header from its data.
 
+## Common pitfalls
+
+- **Excel may override your breaks.** If page setup (margins, scale-to-fit, orientation) doesn't allow your break to fall where you put it, Excel ignores it. Set "Fit to: 1 page wide by Many tall" in Page Setup to keep your breaks intact.
+- **It's horizontal-only.** XLFill inserts a horizontal break (start a new page below). Vertical breaks (start a new page to the right) aren't supported.
+- **Test in Print Preview.** Page breaks aren't visible on the normal sheet view — switch to Page Break Preview or run Print Preview to confirm placement.
+- **Skipped iterations skip their breaks.** If `jx:if` excludes an iteration, the break for that iteration doesn't fire — which is what you want.
+
 ## What's next?
 
 Auto-size columns to fit content:

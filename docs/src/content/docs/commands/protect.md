@@ -77,6 +77,13 @@ To allow editing specific cells while protecting everything else:
 
 Protected cells stay locked; unlocked cells remain editable. This is the standard Excel pattern for form-style spreadsheets.
 
+## Common pitfalls
+
+- **It's not encryption.** Excel sheet protection is convenience-grade — a determined user with [free tools](https://www.google.com/search?q=excel+unprotect+sheet) can remove it in seconds. Don't use this to hide sensitive data.
+- **Forgetting the password locks YOU out too.** XLFill doesn't store the password anywhere accessible — keep it in your secrets manager.
+- **Lock formula cells via the template, not via this command.** Set "Locked" on individual cells in Excel before saving the template. `jx:protect` activates the protection; cell locking is a per-cell template attribute.
+- **Default options are restrictive.** Most defaults are `false`. If you want users to be able to sort/filter your protected sheet, set those explicitly to `true`.
+
 ## What's next?
 
 Create named ranges for formula references:

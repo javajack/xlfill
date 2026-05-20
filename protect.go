@@ -17,8 +17,10 @@ type ProtectCommand struct {
 	Area                     *Area
 }
 
-func (c *ProtectCommand) Name() string { return "protect" }
-func (c *ProtectCommand) Reset()       {}
+func (c *ProtectCommand) Name() string    { return "protect" }
+func (c *ProtectCommand) Reset()          {}
+func (c *ProtectCommand) GetArea() *Area  { return c.Area }
+func (c *ProtectCommand) SetArea(a *Area) { c.Area = a }
 
 // newProtectCommandFromAttrs creates a ProtectCommand from parsed attributes.
 func newProtectCommandFromAttrs(attrs map[string]string) (Command, error) {

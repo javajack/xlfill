@@ -1,0 +1,277 @@
+---
+title: Beginner Tutorial — Your First Report, End to End
+description: A leisurely, concept-first walkthrough of XLFill for people who have never used a template engine. Build a real report from scratch and learn the mental model along the way.
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+This is the slow, friendly walkthrough. It assumes you've never used a template engine before, only know basic Go, and want to *understand* XLFill — not just copy/paste an example. If you already know the concepts and just want a 5-minute install-and-run, jump to [Getting Started](/xlfill/guides/getting-started/).
+
+## What XLFill is, in one paragraph
+
+XLFill takes an `.xlsx` file that **you designed in Excel** (fonts, borders, colors, number formats), reads a few special markers from cell **comments**, then writes a new `.xlsx` file with your data filled in. The output looks exactly like your template — same fonts, same widths, same chart styling — but where the template said `${employee.Name}` the output says `Alice`. That's the whole product.
+
+Think of it as the same idea as a Word mail merge, but for spreadsheets and with a lot more power (loops, conditionals, charts, tables, etc.).
+
+## The mental model
+
+Before you write a single line of code, fix four words in your head:
+
+<CardGrid>
+<Card title="Template" icon="document">
+The `.xlsx` file you design in Excel. It contains placeholder text like `${e.Name}` in some cells and special instructions in cell comments. It's the **design**.
+</Card>
+<Card title="Data" icon="information">
+A `map[string]any` you pass from Go. Keys are the variable names your template references; values are the actual content.
+</Card>
+<Card title="Expression" icon="puzzle">
+The text inside `${...}` in a cell value. XLFill evaluates it (using a small expression language) and writes the result into the output cell.
+</Card>
+<Card title="Command" icon="setting">
+A `jx:something(...)` instruction in a **cell comment** (not the cell value). Commands do bigger things than expressions — looping, conditionals, charts, tables.
+</Card>
+</CardGrid>
+
+That's it. Everything else is just specific commands and helper functions.
+
+## Step 1 — Install
+
+```bash
+go mod init my-report
+go get github.com/javajack/xlfill
+```
+
+Requires Go 1.24 or newer. You also need any spreadsheet editor (Excel, LibreOffice Calc, Google Sheets, or OnlyOffice).
+
+## Step 2 — Design the template
+
+Open your spreadsheet editor. Make a new file and design it like any report you'd build by hand:
+
+| | A | B | C |
+|-|---|---|---|
+| **1** | Employee Report — ${reportDate} | | |
+| **2** | Name | Department | Salary |
+| **3** | ${e.Name} | ${e.Department} | ${e.Salary} |
+
+Format it however you like. Bold row 2. Add a border. Set column widths. Pick a font.
+
+The text inside `${...}` is a **placeholder**. We'll tell XLFill what to substitute for it.
+
+Now add the markers. Right-click cell **A1** → Insert Comment. Type:
+
+```
+jx:area(lastCell="C3")
+```
+
+This says "the template region is A1 through C3." Anything outside that rectangle is left alone in the output.
+
+Right-click cell **A3** → Insert Comment. Type:
+
+```
+jx:each(items="employees" var="e" lastCell="C3")
+```
+
+This says "starting at A3, repeat the row C3 (the single data row) once per employee. Inside the loop, refer to the current employee as `e`."
+
+Save as `template.xlsx`.
+
+:::tip[Where to put commands]
+Commands always live in **cell comments**, not in cell values. A cell value can hold an expression like `${e.Name}` *or* literal text. Commands always go in the comment.
+:::
+
+## Step 3 — Write the Go program
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/javajack/xlfill"
+)
+
+func main() {
+    data := map[string]any{
+        "reportDate": "2026-05-21",
+        "employees": []map[string]any{
+            {"Name": "Alice",   "Department": "Engineering", "Salary": 95000},
+            {"Name": "Bob",     "Department": "Marketing",   "Salary": 72000},
+            {"Name": "Carol",   "Department": "Engineering", "Salary": 88000},
+        },
+    }
+    if err := xlfill.Fill("template.xlsx", "report.xlsx", data); err != nil {
+        log.Fatal(err)
+    }
+    log.Println("Wrote report.xlsx")
+}
+```
+
+Run it:
+
+```bash
+go run main.go
+```
+
+Open `report.xlsx` in any spreadsheet program. You should see three employee rows with all your formatting preserved. Done.
+
+## What just happened, line by line
+
+1. You set up a `data` map whose keys (`reportDate`, `employees`) match the names your template references.
+2. `xlfill.Fill` opened your template.
+3. It found the `jx:area` comment on A1, and knew rows 1-3 / columns A-C were the live region.
+4. It evaluated `${reportDate}` in cell A1's value → wrote "Employee Report — 2026-05-21".
+5. It hit the `jx:each` on A3, looked up `employees` in your data, and looped: for each element, set `e` to that element and re-rendered row 3.
+6. Inside the loop, `${e.Name}` and `${e.Salary}` resolved against the current iteration's `e`.
+
+## Step 4 — Where to go next, in order
+
+Now that you have a working first report, here's the order I'd learn the rest:
+
+### 4a. Expressions (5 minutes)
+
+Anything inside `${...}` is an expression evaluated by [expr-lang](https://expr-lang.org/). You're not limited to field access:
+
+```
+${e.Salary * 1.1}                  // arithmetic
+${e.Age >= 18 ? "adult" : "minor"} // ternary
+${e.Skills[0]}                     // indexing
+${upper(e.Name)}                   // function calls
+${"Hello, " + e.Name + "!"}        // string concatenation
+```
+
+See the [Expressions guide](/xlfill/guides/expressions/) for the full grammar.
+
+### 4b. Built-in functions (10 minutes)
+
+There are 16 ready-to-use functions inside `${...}`: `upper`, `lower`, `title`, `join`, `formatNumber`, `formatDate`, `coalesce`, `ifEmpty`, `sumBy`, `avgBy`, `countBy`, `minBy`, `maxBy`, `t` (i18n), `hyperlink`, `comment`.
+
+```
+${formatNumber(e.Salary, 2)}         → "95,000.00"
+${sumBy(employees, "Salary")}        → 255000
+${coalesce(e.Nickname, e.Name)}      → nickname if set, else name
+```
+
+Full reference: [Built-in Functions](/xlfill/guides/built-in-functions/).
+
+### 4c. The other looping/branching commands
+
+You already know `jx:each`. There are three siblings worth learning early:
+
+- **`jx:if`** — conditionally include/exclude an area
+- **`jx:repeat`** — repeat N times *without* needing a collection (e.g., blank invoice lines)
+- **`jx:grid`** — render a 2D matrix from a slice of slices
+
+### 4d. The "make it pretty" commands
+
+These work on the output rather than placing data:
+
+- **`jx:freezePanes`** — pin headers while users scroll
+- **`jx:autoRowHeight` / `jx:autoColWidth`** — adapt to data length
+- **`jx:mergeCells`** — span headers across columns
+- **`jx:pageBreak`** — section per page for printing
+
+### 4e. The "advanced output" commands
+
+For real Excel features:
+
+- **`jx:table`** — structured Excel table with auto-filter
+- **`jx:chart`** — embedded chart driven by your data range
+- **`jx:sparkline`** — in-cell mini chart per row
+- **`jx:conditionalFormat`** — data bars, color scales, icon sets
+- **`jx:dataValidation`** — dropdowns, integer ranges, etc.
+- **`jx:definedName`** — named range that resizes with your data
+- **`jx:group`** — collapsible outline groups
+- **`jx:protect`** — sheet protection with password
+
+## A bigger walkthrough — a sales report with totals, formatting, and a chart
+
+Let's go from the toy report above to something more realistic. Same Go program, but the template now adds:
+
+- A "Total" row that sums salaries via a formula
+- Conditional highlighting on high salaries
+- A bar chart of departments
+
+**Template additions:**
+
+| Cell | Value | Comment |
+|------|-------|---------|
+| A4 | "Total" | |
+| C4 | `=SUM(C3:C3)` | (no comment — XLFill auto-expands this) |
+| C3 | `${e.Salary}` | `jx:conditionalFormat(type="dataBar" color="#638EC6" lastCell="C3")` |
+| F1 | | `jx:chart(type="bar" title="Salaries by Department" catRange="A3:A3" valRange="C3:C3" lastCell="K10")` |
+
+When XLFill processes 3 employees, the formula `=SUM(C3:C3)` automatically becomes `=SUM(C3:C5)` because the range was inside the iteration template. The chart's `catRange` and `valRange` get similarly expanded. The conditional format covers the expanded range.
+
+That's the entire payoff: **you write the template once at "1 row", and XLFill adjusts everything when rows multiply.**
+
+## Concepts that will save you hours later
+
+### "lastCell" means what?
+
+Every command has a `lastCell` attribute. It's the **bottom-right** corner of the rectangle this command applies to, **measured in the template** (not the output).
+
+- For `jx:area`, it's the bottom-right of the live template region.
+- For `jx:each`, it's the bottom-right of the **one-iteration template** — usually a single row.
+- For `jx:chart`, it's the bottom-right of the chart anchor area.
+
+If you've ever wondered "why is my chart tiny" — it's because you set `lastCell` to a small range. Make it bigger.
+
+### Nesting
+
+Commands nest automatically based on cell position. If `jx:each` on A3 has `lastCell="C5"` (covering rows 3-5), and you put another `jx:each` on A4 with `lastCell="C4"` (just row 4), the inner each is detected as a child of the outer each. You don't write anything to declare the nesting.
+
+This is how you do "departments → employees" reports.
+
+### Data shapes XLFill accepts
+
+For collections (used with `jx:each`, `jx:grid`, etc.):
+- `[]map[string]any` — most flexible, what you saw above
+- `[]any` where each element is a struct (XLFill uses reflection)
+- `[]SomeStruct` — fields are accessed by name
+- Sliced from anywhere — you can pass JSON-decoded data, SQL rows, anything
+
+For scalars: any Go value (int, float, string, time.Time, bool, etc.). XLFill picks the right Excel cell type automatically.
+
+### What happens to unused template cells?
+
+By default (`WithClearTemplateCells(true)`), any cell that still contains an unfilled `${...}` after processing — e.g., because your `jx:each` iterated zero times — is **blanked**. The cell formatting is kept; only the value is cleared.
+
+If you set `WithClearTemplateCells(false)`, those cells keep their template text. Useful when debugging.
+
+## Common beginner mistakes (and what they look like)
+
+### "My template processes nothing"
+
+Cause: no `jx:area` comment, or it's on the wrong cell. Every template needs exactly one `jx:area` on its top-left cell.
+
+### "I see literal `${e.Name}` in the output"
+
+Cause: there's no surrounding `jx:each` defining `e`, or `e` doesn't have a `Name` field. Try the [Describe](/xlfill/guides/debugging/) helper to see what XLFill parsed.
+
+### "My chart is empty / labels are wrong"
+
+Cause: `catRange` and `valRange` are template-relative (the one-iteration positions). When the loop expands, XLFill stretches them automatically. If you wrote the expanded range yourself, that confuses the engine.
+
+### "Formula totals show the wrong sum"
+
+Cause: the formula references the unexpanded template range. Put the formula in a cell that's inside the same area as your `jx:each`, and write the template range (`=SUM(C3:C3)` for a one-row template). XLFill will expand it.
+
+### "Loop variable collides with something"
+
+Cause: you have a data key named `e` *and* a `jx:each` with `var="e"`. The loop variable wins inside the loop, but anywhere outside it sees your data key. Just use distinct names.
+
+## Where to next
+
+<CardGrid>
+<Card title="Browse all 21 commands" icon="open-book">
+[Commands Overview &rarr;](/xlfill/guides/commands-overview/)
+</Card>
+<Card title="The 16 built-in functions" icon="setting">
+[Built-in Functions &rarr;](/xlfill/guides/built-in-functions/)
+</Card>
+<Card title="Debug templates without filling" icon="approve-check">
+[Debugging &rarr;](/xlfill/guides/debugging/)
+</Card>
+<Card title="When things go wrong" icon="warning">
+[Error Handling &rarr;](/xlfill/guides/error-handling/)
+</Card>
+</CardGrid>

@@ -71,6 +71,13 @@ Binary up/down indicators. Positive values show as up bars, negative as down bar
 
 Like charts and tables, sparklines use deferred execution. The sparkline definitions are collected during processing and applied after all rows are written, ensuring data ranges reference the correct output cells.
 
+## Common pitfalls
+
+- **One sparkline per cell, max.** You can't stack a line and a column sparkline in the same cell. Need both? Use adjacent cells.
+- **`dataRange` must be a single row or single column.** A 2D range breaks Excel's sparkline rendering.
+- **`type` is case-sensitive.** It's `line`, `column`, `winLoss` — not `Line` or `bar` (no bar sparkline; use `column`).
+- **Some viewers don't render sparklines.** Excel and Google Sheets do; older LibreOffice versions may show blank cells. Test where it matters.
+
 ## What's next?
 
 Control print layouts with page breaks:

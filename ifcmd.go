@@ -9,8 +9,23 @@ type IfCommand struct {
 	ElseArea  *Area  // area to render when condition is false (optional)
 }
 
-func (c *IfCommand) Name() string { return "if" }
-func (c *IfCommand) Reset()       {}
+func (c *IfCommand) Name() string    { return "if" }
+func (c *IfCommand) Reset()          {}
+func (c *IfCommand) GetArea() *Area  { return c.IfArea }
+func (c *IfCommand) SetArea(a *Area) { c.IfArea = a }
+
+// Areas returns the if-branch and (when set) the else-branch area, so
+// listener propagation visits both. Implements MultiAreaHolder.
+func (c *IfCommand) Areas() []*Area {
+	out := []*Area{}
+	if c.IfArea != nil {
+		out = append(out, c.IfArea)
+	}
+	if c.ElseArea != nil {
+		out = append(out, c.ElseArea)
+	}
+	return out
+}
 
 // newIfCommandFromAttrs creates an IfCommand from parsed attributes.
 func newIfCommandFromAttrs(attrs map[string]string) (Command, error) {

@@ -7,8 +7,10 @@ type AutoRowHeightCommand struct {
 	Area *Area
 }
 
-func (c *AutoRowHeightCommand) Name() string { return "autoRowHeight" }
-func (c *AutoRowHeightCommand) Reset()       {}
+func (c *AutoRowHeightCommand) Name() string    { return "autoRowHeight" }
+func (c *AutoRowHeightCommand) Reset()          {}
+func (c *AutoRowHeightCommand) GetArea() *Area  { return c.Area }
+func (c *AutoRowHeightCommand) SetArea(a *Area) { c.Area = a }
 
 func newAutoRowHeightCommandFromAttrs(attrs map[string]string) (Command, error) {
 	return &AutoRowHeightCommand{}, nil

@@ -297,7 +297,8 @@ type testStyleListenerCounter struct {
 func (l *testStyleListenerCounter) BeforeTransformCell(src, target CellRef, ctx *Context, tx Transformer) bool {
 	return true
 }
-func (l *testStyleListenerCounter) AfterTransformCell(src, target CellRef, ctx *Context, tx Transformer) {}
+func (l *testStyleListenerCounter) AfterTransformCell(src, target CellRef, ctx *Context, tx Transformer) {
+}
 func (l *testStyleListenerCounter) StyleCell(target CellRef, value any, ctx *Context) *StyleOverride {
 	l.styleCalls.Add(1)
 	return nil

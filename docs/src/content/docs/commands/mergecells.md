@@ -40,6 +40,13 @@ Cell A1 value: `${dept.Name}`
 
 For each department, the department name cell spans columns A through C, creating a clean section header.
 
+## Common pitfalls
+
+- **Don't use this for static merges.** If your header row is always 3 columns wide and never iterates, merge it directly in Excel — it's simpler and renders identically.
+- **`cols` and `rows` count from the command cell.** `cols="3"` means "merge 3 columns starting at this cell" (this cell + the next 2). Not "merge through column 3".
+- **The merged range must stay inside the template area.** A merge that extends past `jx:area`'s `lastCell` produces a malformed output file.
+- **Values in cells that get merged-over are lost.** Excel keeps only the top-left cell's value when cells are merged. Put `${e.Name}` in the top-left of the merge, leave the others blank.
+
 ## Try it
 
 Download the runnable example: **template** [t11.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/input/t11.xlsx) | **output** [11_mergecells.xlsx](https://github.com/javajack/xlfill/raw/main/examples/xlfill-test/output/11_mergecells.xlsx) | [code snippet](/xlfill/reference/examples/#11-merge-cells)

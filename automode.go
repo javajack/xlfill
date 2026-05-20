@@ -11,7 +11,7 @@ type Mode int
 const (
 	ModeSequential Mode = iota // default: single-threaded, in-memory
 	ModeStreaming              // low-memory output via StreamWriter
-	ModeParallel              // concurrent each processing
+	ModeParallel               // concurrent each processing
 )
 
 // String returns the mode name.
@@ -95,7 +95,7 @@ type templateAnalysis struct {
 	maxEachDepth         int  // deepest nesting level of each commands
 	isFixedHeight        bool // all each areas have fixed output height
 	sheetCount           int
-	estimatedCols        int  // max column width across areas
+	estimatedCols        int // max column width across areas
 }
 
 // analyzeTemplate walks the parsed area tree and extracts structural properties.

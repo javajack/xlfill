@@ -17,8 +17,10 @@ type TableCommand struct {
 	Area            *Area
 }
 
-func (c *TableCommand) Name() string { return "table" }
-func (c *TableCommand) Reset()       {}
+func (c *TableCommand) Name() string    { return "table" }
+func (c *TableCommand) Reset()          {}
+func (c *TableCommand) GetArea() *Area  { return c.Area }
+func (c *TableCommand) SetArea(a *Area) { c.Area = a }
 
 // newTableCommandFromAttrs creates a TableCommand from parsed attributes.
 func newTableCommandFromAttrs(attrs map[string]string) (Command, error) {
